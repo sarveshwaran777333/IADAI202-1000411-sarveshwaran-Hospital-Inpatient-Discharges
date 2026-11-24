@@ -2,6 +2,7 @@ import re
 import html
 import json
 import math
+import time
 import warnings
 from pathlib import Path
 
@@ -635,6 +636,30 @@ h2::after, h3::after { content: ""; position: absolute; left: 0; bottom: 0; widt
   font-weight: 800; color: #07111f; background: linear-gradient(145deg, #00e5ff, #8b5cf6); box-shadow: 0 5px 0 rgba(0,100,150,.5); }
 body.ms-mix .math-step { filter: invert(1) hue-rotate(180deg); }
 
+/* ----- Dr. MediBot: floating 3D doctor + chat dialog ----- */
+.st-key-doc_launch { position: fixed !important; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+#ms-doc-launch { position: fixed; right: 18px; bottom: 82px; z-index: 999997; width: 132px; height: 158px; cursor: pointer; outline: none;
+  filter: drop-shadow(0 14px 22px rgba(0,229,255,.38)); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+#ms-doc-launch:hover, #ms-doc-launch:focus-visible { transform: translateY(-6px) scale(1.06); }
+#ms-doc-canvas { width: 100%; height: 100%; }
+#ms-doc-canvas canvas { width: 100% !important; height: 100% !important; display: block; }
+#ms-doc-bubble { position: absolute; right: 8px; bottom: 100%; margin-bottom: -4px; white-space: nowrap; padding: 9px 14px; border-radius: 16px 16px 4px 16px;
+  font: 700 12px 'Inter', sans-serif; color: #e8fbff; background: linear-gradient(145deg, rgba(14,34,58,.96), rgba(8,20,36,.96));
+  border: 1px solid rgba(0,229,255,.55); box-shadow: 0 10px 26px rgba(0,0,0,.35), 0 0 18px rgba(0,229,255,.25);
+  opacity: 0; transform: translateY(8px) scale(.94); transform-origin: 100% 100%; pointer-events: none; transition: opacity .3s, transform .3s; }
+#ms-doc-launch.ms-show #ms-doc-bubble { opacity: 1; transform: none; }
+@media (max-width: 640px) { #ms-doc-launch { width: 96px; height: 116px; bottom: 76px; right: 10px; } }
+
+[data-testid="stDialog"] div[role="dialog"] { background: linear-gradient(160deg, rgba(12,26,44,.97), rgba(6,14,26,.98)) !important;
+  border: 1.5px solid rgba(0,229,255,.45); border-radius: 24px; box-shadow: 0 40px 90px -20px rgba(0,229,255,.35), 0 0 0 1px rgba(139,92,246,.2); }
+[data-testid="stDialog"] div[role="dialog"] h2, [data-testid="stDialog"] div[role="dialog"] p,
+[data-testid="stDialog"] div[role="dialog"] li, [data-testid="stDialog"] div[role="dialog"] label { color: #e4f1ff; }
+[data-testid="stDialog"] div[role="dialog"] h2::after { display: none; }
+.ms-doc-stage { position: relative; height: 190px; margin: 0 0 10px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(0,229,255,.25);
+  background: radial-gradient(circle at 50% 80%, rgba(0,229,255,.22), transparent 62%), radial-gradient(circle at 15% 15%, rgba(139,92,246,.2), transparent 45%), linear-gradient(160deg, #0d1c30, #070f1b); }
+.ms-doc-stage canvas { width: 100% !important; height: 100% !important; display: block; }
+[data-testid="stDialog"] [data-testid="stChatMessage"] { background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.14); border-radius: 14px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   .ms-pre { opacity: 1; transform: none; }
@@ -647,7 +672,7 @@ MS_JS = r"""(function () {
   var W = window, D = document, B = D.body;
   var reduce = !!(W.matchMedia && W.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-  var state = { theme: 'mix', mx: 0.5, my: 0.5, px: 0, py: 0, scroll: 0, hero: null, bg: null };
+  var state = { theme: 'mix', mx: 0.5, my: 0.5, px: 0, py: 0, scroll: 0, hero: null, bg: null, doc: null, stage: null, docHover: false, lastMut: 0 };
 
   try { state.theme = W.localStorage.getItem('ms-theme') || 'mix'; } catch (e) {}
 
@@ -821,6 +846,7 @@ MS_JS = r"""(function () {
       cam.position.y += ((camY - state.py * 2.2) - cam.position.y) * 0.04;
       cam.lookAt(0, camY * 0.6, 0);
       if (state.hero) state.hero.render(t);
+      if (state.doc || state.stage) { var ds = doctorState(t); if (state.doc) state.doc.render(t, { wave: state.docHover || (t % 14) < 2.2, talking: false, lx: state.px, ly: state.py }); if (state.stage) state.stage.render(t, { wave: !ds.talking && (t % 9) < 1.6, talking: ds.talking, lx: state.px, ly: state.py }); }
       renderer.render(scene, cam);
     }
     W.addEventListener('resize', function () {
@@ -904,6 +930,140 @@ MS_JS = r"""(function () {
     if (reduce) api.render(0);
   }
 
+
+  /* ---------- Dr. MediBot 3D doctor robot ---------- */
+  function buildDoctor(THREE) {
+    var g = new THREE.Group();
+    function mat(c, e, m, r) { return new THREE.MeshStandardMaterial({ color: c, emissive: e || 0x000000, metalness: m === undefined ? 0.2 : m, roughness: r === undefined ? 0.3 : r }); }
+    var white = mat(0xf4fbff, 0x1a2530, 0.15, 0.28), teal = mat(0x00c8ee, 0x006f88, 0.5, 0.25),
+        dark = mat(0x0a1626, 0x000000, 0.7, 0.15), red = mat(0xff3d6e, 0x8a1030, 0.2, 0.4),
+        silver = mat(0xdfe8f0, 0x000000, 0.95, 0.12);
+    var glow = new THREE.MeshBasicMaterial({ color: 0x7ffcff });
+
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.5, 1.1, 32), white); body.position.y = -0.55; g.add(body);
+    var belly = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), white); belly.position.y = -1.1; g.add(belly);
+    var bh = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.06), red); bh.position.set(0, -0.36, 0.56); g.add(bh);
+    var bv = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.34, 0.06), red); bv.position.set(0, -0.36, 0.56); g.add(bv);
+    var collar = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.05, 10, 40), teal); collar.rotation.x = Math.PI / 2; collar.position.y = -0.02; g.add(collar);
+
+    var steth = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.032, 10, 36, Math.PI * 1.35), dark); steth.position.set(0, -0.12, 0.3); steth.rotation.set(-0.35, 0, Math.PI * 0.82); g.add(steth);
+    var chestPiece = new THREE.Mesh(new THREE.SphereGeometry(0.085, 16, 16), silver); chestPiece.position.set(0.06, -0.62, 0.55); g.add(chestPiece);
+
+    var headG = new THREE.Group(); headG.position.y = 0.6; g.add(headG);
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 24), white); head.scale.set(1, 0.9, 0.95); headG.add(head);
+    var visor = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 20), dark); visor.scale.set(1.05, 0.62, 0.62); visor.position.set(0, -0.02, 0.2); headG.add(visor);
+    var eyes = [];
+    [-0.2, 0.2].forEach(function (x) {
+      var e = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 16), glow); e.scale.set(1, 1.3, 0.5); e.position.set(x, 0.02, 0.5); headG.add(e); eyes.push(e);
+    });
+    var mouth = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.035, 0.03), glow); mouth.position.set(0, -0.14, 0.49); headG.add(mouth);
+    var band = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.028, 10, 48), teal); band.rotation.x = Math.PI / 2; band.position.y = 0.3; band.scale.set(1, 0.95, 1); headG.add(band);
+    var mirror = new THREE.Mesh(new THREE.CircleGeometry(0.17, 28), silver); mirror.position.set(0, 0.34, 0.56); mirror.rotation.x = -0.45; headG.add(mirror);
+    var mrim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.022, 10, 28), teal); mrim.position.copy(mirror.position); mrim.rotation.copy(mirror.rotation); headG.add(mrim);
+    [-1, 1].forEach(function (s) {
+      var ear = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 16), teal); ear.scale.set(0.45, 0.8, 0.8); ear.position.set(s * 0.62, 0, 0); headG.add(ear);
+    });
+    var ant = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.28, 8), silver); ant.position.set(0, 0.7, -0.05); headG.add(ant);
+    var tip = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 14), glow); tip.position.set(0, 0.88, -0.05); headG.add(tip);
+
+    function arm(side) {
+      var pivot = new THREE.Group(); pivot.position.set(side * 0.72, -0.2, 0);
+      var upper = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.62, 16), white); upper.position.y = -0.31; pivot.add(upper);
+      var hand = new THREE.Mesh(new THREE.SphereGeometry(0.135, 16, 16), teal); hand.position.y = -0.68; pivot.add(hand);
+      var shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 16), teal); pivot.add(shoulder);
+      g.add(pivot); return pivot;
+    }
+    var armL = arm(-1), armR = arm(1);
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.02, 8, 60), new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.7 }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = -1.55; g.add(ring);
+    var ring2 = ring.clone(); ring2.scale.set(1.35, 1.35, 1.35); ring2.material = new THREE.MeshBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.45 }); g.add(ring2);
+
+    var wave = 0, talk = 0, look = { x: 0, y: 0 };
+    return {
+      group: g,
+      update: function (t, o) {
+        o = o || {};
+        wave += ((o.wave ? 1 : 0) - wave) * 0.08;
+        talk += ((o.talking ? 1 : 0) - talk) * 0.25;
+        g.position.y = Math.sin(t * 1.6) * 0.07;
+        look.x += ((o.lx || 0) - look.x) * 0.08; look.y += ((o.ly || 0) - look.y) * 0.08;
+        g.rotation.y = Math.sin(t * 0.6) * 0.18 + look.x * 0.45;
+        headG.rotation.y = look.x * 0.3; headG.rotation.x = look.y * 0.22 + Math.sin(t * 1.1) * 0.03;
+        armR.rotation.z = -0.22 + wave * (-2.2 + Math.sin(t * 7) * 0.45);
+        armL.rotation.z = 0.22 + Math.sin(t * 1.4) * 0.05 - talk * (0.5 + Math.sin(t * 5) * 0.2);
+        mouth.scale.y = 1 + talk * Math.abs(Math.sin(t * 15)) * 5; mouth.scale.x = 1 - talk * 0.25 * Math.abs(Math.sin(t * 15));
+        var blink = (t % 3.8) < 0.13 ? 0.1 : 1.3; eyes.forEach(function (e) { e.scale.y = blink; });
+        tip.scale.setScalar(1 + Math.sin(t * 4) * 0.25 + talk * 0.5);
+        ring.rotation.z = t * 0.8; ring2.rotation.z = -t * 0.5;
+      }
+    };
+  }
+
+  function doctorScene(THREE, box, opts) {
+    var renderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return null; }
+    renderer.setPixelRatio(Math.min(W.devicePixelRatio || 1, 2));
+    box.appendChild(renderer.domElement);
+    var scene = new THREE.Scene();
+    var cam = new THREE.PerspectiveCamera(opts.fov || 38, 1, 0.1, 60); cam.position.set(0, opts.camY || 0, opts.camZ || 6.4);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    var k = new THREE.PointLight(0x00e5ff, 2.4, 40); k.position.set(3, 3, 5); scene.add(k);
+    var f = new THREE.PointLight(0x8b5cf6, 1.8, 40); f.position.set(-4, -1, 4); scene.add(f);
+    var doc = buildDoctor(THREE); doc.group.scale.setScalar(opts.scale || 1); doc.group.position.y = opts.y || 0; scene.add(doc.group);
+    function resize() { var w = box.clientWidth || 120, h = box.clientHeight || 150; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    resize();
+    var ro = W.ResizeObserver ? new W.ResizeObserver(resize) : null; if (ro) ro.observe(box);
+    return {
+      box: box,
+      render: function (t, o) { if (!box.isConnected) return; doc.update(t, o); renderer.render(scene, cam); },
+      dispose: function () { try { ro && ro.disconnect(); renderer.dispose(); renderer.forceContextLoss(); } catch (e) {} }
+    };
+  }
+
+  function openDoctor() {
+    var btn = D.querySelector('.st-key-doc_launch button') || D.querySelector('.st-key-doc_launch_sidebar button');
+    if (!btn) {
+      var all = D.querySelectorAll('button');
+      for (var i = 0; i < all.length; i++) { if (/Ask Dr\. MediBot/.test(all[i].textContent || '')) { btn = all[i]; break; } }
+    }
+    if (btn) btn.click();
+  }
+
+  function attachDoctorLauncher() {
+    var THREE = W.THREE; if (!THREE) return;
+    var wrap = D.getElementById('ms-doc-launch');
+    if (!wrap) {
+      wrap = D.createElement('div'); wrap.id = 'ms-doc-launch'; wrap.setAttribute('role', 'button'); wrap.tabIndex = 0;
+      wrap.setAttribute('aria-label', 'Ask Dr. MediBot, the 3D hospital assistant');
+      wrap.innerHTML = '<div id="ms-doc-bubble">Need help? Ask Dr. MediBot!</div><div id="ms-doc-canvas"></div>';
+      wrap.addEventListener('click', openDoctor);
+      wrap.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDoctor(); } });
+      wrap.addEventListener('pointerenter', function () { state.docHover = true; wrap.classList.add('ms-show'); });
+      wrap.addEventListener('pointerleave', function () { state.docHover = false; wrap.classList.remove('ms-show'); });
+      B.appendChild(wrap);
+      W.setTimeout(function () { wrap.classList.add('ms-show'); }, 1800);
+      W.setTimeout(function () { if (!state.docHover) wrap.classList.remove('ms-show'); }, 11000);
+    }
+    if (state.doc && state.doc.box.isConnected) return;
+    if (state.doc) state.doc.dispose();
+    state.doc = doctorScene(THREE, D.getElementById('ms-doc-canvas'), { scale: 1, camZ: 6.6, y: 0.1 });
+    if (state.doc && reduce) state.doc.render(0, {});
+  }
+
+  function attachDoctorStage() {
+    var THREE = W.THREE; if (!THREE) return;
+    var el = D.querySelector('.ms-doc-stage');
+    if (!el) { if (state.stage) { state.stage.dispose(); state.stage = null; } return; }
+    if (state.stage && state.stage.box === el && el.querySelector('canvas')) return;
+    if (state.stage) { state.stage.dispose(); state.stage = null; }
+    var s = doctorScene(THREE, el, { fov: 34, camZ: 6.2, scale: 1.0, y: 0.05 });
+    if (s) { state.stage = s; if (reduce) s.render(0, {}); }
+  }
+
+  function doctorState(t) {
+    return { wave: state.docHover, talking: (W.performance.now() - state.lastMut) < 650 && !!D.querySelector('[role="dialog"]'), lx: state.px, ly: state.py };
+  }
+
   /* ---------- tilt / spotlight / reveal ---------- */
   var TILT = '.hero, [data-testid="stMetric"], .insight-card, .mascot-wrap';
   function bindTilt() {
@@ -955,15 +1115,19 @@ MS_JS = r"""(function () {
   }, true);
 
   /* ---------- boot ---------- */
-  function refresh() { ensureChrome(); attachHero(); bindTilt(); bindReveal(); }
+  function refresh() { ensureChrome(); attachHero(); attachDoctorLauncher(); attachDoctorStage(); bindTilt(); bindReveal(); }
   var pending = false;
-  new W.MutationObserver(function () {
+  new W.MutationObserver(function (muts) {
+    for (var mi = 0; mi < muts.length; mi++) {
+      var tg = muts[mi].target, nd = tg && tg.nodeType === 3 ? tg.parentNode : tg;
+      if (nd && nd.closest && nd.closest('[role="dialog"]')) { state.lastMut = W.performance.now(); break; }
+    }
     if (pending) return; pending = true;
     W.requestAnimationFrame(function () { pending = false; refresh(); });
-  }).observe(B, { childList: true, subtree: true });
+  }).observe(B, { childList: true, subtree: true, characterData: true });
 
   ensureChrome(); bindTilt(); bindReveal(); if (!reduce) glow();
-  function ready() { initBackground(W.THREE); attachHero(); }
+  function ready() { initBackground(W.THREE); attachHero(); attachDoctorLauncher(); attachDoctorStage(); }
   if (W.THREE) { ready(); } else {
     var s = D.createElement('script'); s.src = THREE_URL; s.async = true; s.onload = ready;
     s.onerror = function () { B.style.background = PALETTE.dark.c; };
@@ -2282,6 +2446,446 @@ def top_values(data, column, limit=15):
 
 
 # ============================================================
+# DR. MEDIBOT - 3D DOCTOR ROBOT ASSISTANT (chat engine)
+# Answers questions about the app, the charts and the live data.
+# It runs fully offline: no API key or internet connection needed.
+# ============================================================
+
+import difflib
+
+DOC_GREETING = (
+    "Hello, I'm **Dr. MediBot** 🩺, your MediScope assistant.\n\n"
+    "Ask me anything about this web app: what a page or chart shows, how to use the filters "
+    "or the 3D controls, how a number is calculated, or what the data says right now "
+    "(for example *\"What is the average length of stay?\"*)."
+)
+
+DOC_QUICK_QUESTIONS = [
+    "What does this page show?",
+    "What is the average length of stay?",
+    "Which age group has the most discharges?",
+    "How do I rotate the 3D charts?",
+    "Explain the box plot",
+    "How is accuracy calculated?",
+]
+
+PAGE_INFO = {
+    "Overview": "The **Overview** page shows the headline numbers (records, average stay, average charges, facilities, median stay, total charges, counties) and four graphs: patients by age group, payment type, the length-of-stay distribution and average stay by severity, plus quick findings.",
+    "Diagnosis & Stay": "The **Diagnosis & Stay** page compares average length of stay across diagnosis categories (use the slider to choose how many), shows how stay varies by severity in a box plot, and gives a downloadable diagnosis summary table.",
+    "Charges & Demographics": "The **Charges & Demographics** page shows average, median and total charges, charges by severity (box plot), average charges by age group and gender, the charge distribution by age (violin) and a demographic summary table.",
+    "Facilities & Counties": "The **Facilities & Counties** page ranks hospitals by discharge volume and by average stay, shows a county-by-facility heatmap of average stay, and gives a downloadable facility summary table.",
+    "Data Quality": "The **Data Quality** page shows how many rows were cleaned away, the preprocessing steps, which source columns were detected, a missing-value graph, length-of-stay outliers and a cleaned data preview.",
+    "Mathematical Analysis": "The **Mathematical Analysis** page recalculates mean, median, standard deviation, payment percentages, severity comparisons and the Pearson correlation from your current filters.",
+    "Math Behind the Graphs": "The **Math Behind the Graphs** page walks through 10 steps showing the formula, the live numbers and the 3D graph for every calculation behind the dashboard.",
+    "AI Experiment": "The **AI Experiment** page trains a demonstration model (Random Forest or a baseline) to predict severity, then shows accuracy, a confusion matrix and a classification report. It is educational only, not for clinical use.",
+    "Data Explorer": "The **Data Explorer** page lets you search records, narrow them by length of stay and charges, view the table and a numeric summary, and download the result as CSV.",
+}
+
+_MEDICAL_PATTERN = re.compile(
+    r"\b(should i take|what medicine|which medicine|which drug|dosage|dose of|i have (a )?(pain|fever|cough|headache)|"
+    r"my symptoms?|diagnose me|am i sick|treat my|cure for|prescri(be|ption) for|is it safe to take)\b",
+    re.IGNORECASE,
+)
+
+
+def _doc_frame(ctx):
+    return ctx["f"] if ctx.get("f") is not None and len(ctx["f"]) else None
+
+
+def _a_records(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    return (f"There are **{len(f):,} discharge records** in the current filtered view, out of "
+            f"{len(ctx['df']):,} cleaned records in the loaded sample.")
+
+
+def _a_avg_los(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    return (f"The **average length of stay is {f['LOS_Days'].mean():,.2f} days** and the **median is "
+            f"{f['LOS_Days'].median():,.2f} days** for the current filters. When the mean is higher "
+            "than the median, a few long stays are pulling the average up.")
+
+
+def _a_avg_charges(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    c = f["Total_Charges"].dropna()
+    if c.empty:
+        return "There are no valid charge values for the current filters."
+    return (f"Average recorded charges are **${c.mean():,.2f}** (median ${c.median():,.2f}), and the total of "
+            f"all recorded charges is **${c.sum():,.2f}**. Charges are recorded amounts, not the cost of treatment.")
+
+
+def _a_top_age(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    vc = f["Age_Group"].astype(str).value_counts()
+    return (f"**{vc.index[0]}** is the most represented age group with **{int(vc.iloc[0]):,} records** "
+            f"({vc.iloc[0] / len(f) * 100:.1f}% of the filtered records).")
+
+
+def _a_top_payment(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    vc = f["Payment_Type"].astype(str).value_counts()
+    return (f"The most frequent payment category is **{vc.index[0]}** ({vc.iloc[0] / len(f) * 100:.1f}% "
+            f"of records), followed by **{vc.index[1]}**." if len(vc) > 1 else
+            f"The only payment category is **{vc.index[0]}**.")
+
+
+def _a_top_facility(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    vc = f["Facility"].astype(str).value_counts()
+    return (f"**{vc.index[0]}** has the most discharge records (**{int(vc.iloc[0]):,}**) in the loaded sample. "
+            "This measures volume only, not quality.")
+
+
+def _a_long_facility(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    top = f["Facility"].astype(str).value_counts().head(15).index
+    g = f[f["Facility"].astype(str).isin(top)].groupby("Facility", observed=False)["LOS_Days"].mean().sort_values()
+    return (f"Among the 15 highest-volume facilities, **{g.index[-1]}** has the longest average stay "
+            f"(**{g.iloc[-1]:.2f} days**) and **{g.index[0]}** the shortest (**{g.iloc[0]:.2f} days**). "
+            "Differences are descriptive and do not show hospital quality.")
+
+
+def _a_severity_los(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    g = f.groupby("Severity", observed=False)["LOS_Days"].mean().dropna()
+    if g.empty:
+        return "There is no severity data for the current filters."
+    parts = ", ".join(f"{str(k)}: {v:.2f} days" for k, v in g.items())
+    return f"Average stay by severity, from your current filters: {parts}. The longest is **{g.idxmax()}**."
+
+
+def _a_severity_charges(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    g = f.groupby("Severity", observed=False)["Total_Charges"].mean().dropna()
+    if g.empty:
+        return "There are no valid charge values for the current filters."
+    parts = ", ".join(f"{str(k)}: ${v:,.0f}" for k, v in g.items())
+    return f"Average charges by severity: {parts}. The highest is **{g.idxmax()}**."
+
+
+def _a_top_diagnosis(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    d = f[f["Diagnosis"] != "Unknown"]
+    if d.empty:
+        return "No diagnosis categories are available for these filters."
+    top = d["Diagnosis"].value_counts().head(15).index
+    g = d[d["Diagnosis"].isin(top)].groupby("Diagnosis")["LOS_Days"].mean().sort_values()
+    return (f"Among the 15 most common diagnosis categories, **{g.index[-1]}** has the longest average stay "
+            f"(**{g.iloc[-1]:.2f} days**). The most common category overall is **{d['Diagnosis'].value_counts().index[0]}**.")
+
+
+def _a_gender(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    vc = f["Gender"].astype(str).value_counts()
+    return "Gender split in the filtered records: " + ", ".join(
+        f"**{k}** {v / len(f) * 100:.1f}% ({int(v):,})" for k, v in vc.items()) + "."
+
+
+def _a_counties(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    return (f"The filtered data covers **{f['Facility'].nunique():,} facilities** in "
+            f"**{f['County'].nunique():,} counties**.")
+
+
+def _a_corr(ctx):
+    f = _doc_frame(ctx)
+    if f is None:
+        return "No records match the current filters."
+    p = f[["LOS_Days", "Total_Charges"]].apply(pd.to_numeric, errors="coerce").dropna()
+    if len(p) < 3 or p["LOS_Days"].nunique() < 2 or p["Total_Charges"].nunique() < 2:
+        return "There are not enough paired values to calculate a correlation."
+    r = p["LOS_Days"].corr(p["Total_Charges"])
+    strength = "strong" if abs(r) >= 0.6 else "moderate" if abs(r) >= 0.3 else "weak"
+    direction = "positive" if r > 0 else "negative"
+    return (f"The Pearson correlation between stay and charges is **r = {r:.3f}**, a {strength} {direction} linear "
+            "association. Correlation does not prove causation.")
+
+
+def _a_cleaning(ctx):
+    s = ctx["stats"]
+    return (f"The loaded sample had **{s['original_rows']:,} rows**. **{s['removed_rows']:,}** "
+            f"({s['removed_rows'] / max(s['original_rows'], 1) * 100:.2f}%) were removed during cleaning "
+            f"(missing or non-positive length of stay: {s['invalid_los_rows']:,}; negative charges: "
+            f"{s['invalid_charge_rows']:,}), leaving **{s['cleaned_rows']:,}**.")
+
+
+def _a_missing(ctx):
+    m = ctx["df"].isna().sum()
+    m = (m / max(len(ctx["df"]), 1) * 100).sort_values(ascending=False)
+    if m.iloc[0] == 0:
+        return "No empty cells were found in the processed columns."
+    return "The columns with the most missing values are " + ", ".join(
+        f"**{k}** ({v:.1f}%)" for k, v in m.head(3).items()) + ". See the Data Quality page for the full graph."
+
+
+def _a_this_page(ctx):
+    return PAGE_INFO.get(ctx["page"], "Use the sidebar to choose a page.")
+
+
+def _a_all_pages(ctx):
+    return "MediScope has these pages:\n\n" + "\n".join(f"- {v}" for v in PAGE_INFO.values())
+
+
+def _a_ai(ctx):
+    r = ctx.get("ai")
+    base = ("The **AI Experiment** page trains a model to predict the severity of illness from age group, gender, "
+            "payment type, diagnosis and other features. Pick features, a model and a test percentage, then press "
+            "*Train and evaluate model*. It is educational and **not validated for clinical use**.")
+    if r:
+        base += (f"\n\nYour last trained model ({r['model_type']}) reached **{r['accuracy'] * 100:.2f}% test "
+                 f"accuracy** on {r['testing_rows']:,} test records.")
+    return base
+
+
+def _graph(key):
+    return lambda ctx: GRAPH_EXPLANATIONS[key] + "\n\nIn 3D, drag to rotate and hover for exact values."
+
+
+DOC_KB = [
+    {"k": ["hello", "hi there", "hey", "good morning", "good evening"], "a": "Hello! How can I help you with MediScope today? Ask about a chart, a number, a page or the 3D controls."},
+    {"k": ["thank", "thanks", "great job", "awesome"], "a": "You're welcome! Ask me anything else about the dashboard."},
+    {"k": ["who are you", "your name", "what are you", "are you a real doctor", "are you ai"],
+     "a": "I'm **Dr. MediBot**, the 3D assistant of MediScope. I'm a data helper, **not a medical doctor**: I explain this dashboard and its numbers, and I can't give medical advice."},
+    {"k": ["what can you do", "help me", "how can you help", "what can i ask", "assist"],
+     "a": "I can:\n- explain any **page** or **graph**\n- tell you **live numbers** from your filtered data (records, average stay, charges, top facility, correlation...)\n- explain **terms** like length of stay, median, IQR, severity, correlation\n- show **how to use** filters, downloads, 3D controls and the theme button\n- explain the **maths** and the **AI experiment**"},
+    {"k": ["this page", "current page", "which page", "where am i", "what does this page", "what is on this page"], "a": _a_this_page},
+    {"k": ["all pages", "list pages", "what pages", "navigation", "menu", "sections"], "a": _a_all_pages},
+    {"k": ["overview page"], "a": lambda c: PAGE_INFO["Overview"]},
+    {"k": ["diagnosis page", "diagnosis & stay"], "a": lambda c: PAGE_INFO["Diagnosis & Stay"]},
+    {"k": ["charges page", "demographics page"], "a": lambda c: PAGE_INFO["Charges & Demographics"]},
+    {"k": ["facilities page", "counties page"], "a": lambda c: PAGE_INFO["Facilities & Counties"]},
+    {"k": ["data explorer", "explorer page", "search records", "search the data"],
+     "a": lambda c: PAGE_INFO["Data Explorer"] + "\n\nType a facility, diagnosis, county, region or record ID in the search box, then use the stay slider and the maximum-charges box."},
+    {"k": ["math behind", "how are graphs calculated", "how things are calculated", "calculation steps", "maths page"], "a": lambda c: PAGE_INFO["Math Behind the Graphs"]},
+    {"k": ["mathematical analysis"], "a": lambda c: PAGE_INFO["Mathematical Analysis"]},
+    {"k": ["how many records", "number of records", "total records", "how many discharges", "record count", "discharge records"], "a": _a_records},
+    {"k": ["average length of stay", "average stay", "mean stay", "avg los", "average los", "how long do patients stay", "median stay", "mean length"], "a": _a_avg_los},
+    {"k": ["average charges", "average cost", "mean charges", "total charges", "how much do patients pay", "average bill", "total cost"], "a": _a_avg_charges},
+    {"k": ["most discharges age", "age group most", "which age group", "most common age", "age distribution", "oldest patients", "age with most"], "a": _a_top_age},
+    {"k": ["payment type", "most common payment", "who pays", "insurance most", "medicare share", "payer"], "a": _a_top_payment},
+    {"k": ["facility most", "busiest hospital", "which hospital", "most discharge records", "highest volume", "largest hospital", "top facility", "top hospital"], "a": _a_top_facility},
+    {"k": ["longest average stay facility", "facility longest stay", "hospital longest stay", "shortest stay facility"], "a": _a_long_facility},
+    {"k": ["severity longest", "stay by severity", "severity stay", "which severity", "severity average stay"], "a": _a_severity_los},
+    {"k": ["severity charges", "charges by severity", "most expensive severity"], "a": _a_severity_charges},
+    {"k": ["diagnosis longest", "which diagnosis", "top diagnosis", "common diagnosis", "diagnosis stay"], "a": _a_top_diagnosis},
+    {"k": ["gender split", "male female", "how many men", "how many women", "gender share"], "a": _a_gender},
+    {"k": ["how many counties", "how many facilities", "counties represented", "facilities represented"], "a": _a_counties},
+    {"k": ["correlation value", "correlation between stay and charges", "pearson", "are charges related to stay", "relationship stay charges"], "a": _a_corr},
+    {"k": ["rows removed", "cleaned rows", "how much data was removed", "removed during cleaning", "invalid records", "data cleaning"], "a": _a_cleaning},
+    {"k": ["missing values", "missing data", "empty cells", "null values", "incomplete data"], "a": _a_missing},
+    {"k": ["age bar", "age graph", "age chart", "patients by age"], "a": _graph("overview_age_distribution")},
+    {"k": ["payment pie", "payment donut", "payment chart", "donut", "pie chart"], "a": _graph("overview_payment_pie")},
+    {"k": ["histogram", "length of stay distribution", "stay distribution"], "a": _graph("overview_los_histogram")},
+    {"k": ["box plot", "boxplot", "whisker", "quartile", "iqr", "interquartile", "outlier"],
+     "a": lambda c: _graph("diagnosis_severity_box")(c) + "\n\nMath: IQR = Q3 − Q1; whiskers stop at the last value within 1.5 × IQR of the box. See *Math Behind the Graphs*, step 5."},
+    {"k": ["charges box", "charges by severity graph"], "a": _graph("charges_severity_box")},
+    {"k": ["age and gender", "gender chart", "grouped bar"], "a": _graph("charges_age_gender")},
+    {"k": ["violin", "density plot", "kde"],
+     "a": lambda c: _graph("charges_age_violin")(c) + "\n\nMath: each violin is a kernel density estimate (see step 6 of *Math Behind the Graphs*)."},
+    {"k": ["facility volume", "facility discharge graph", "discharge volume"], "a": _graph("facility_discharge_volume")},
+    {"k": ["facility average stay graph", "average stay by facility"], "a": _graph("facility_average_stay")},
+    {"k": ["heatmap", "heat map", "county facility"], "a": _graph("county_facility_heatmap")},
+    {"k": ["missing value graph", "missing value chart"], "a": _graph("quality_missing_values")},
+    {"k": ["confusion matrix"], "a": _graph("ai_confusion_matrix")},
+    {"k": ["diagnosis graph", "diagnosis chart", "average stay per diagnosis"], "a": _graph("diagnosis_average_stay")},
+    {"k": ["accuracy", "precision", "recall", "f1", "how is accuracy calculated", "classification report"],
+     "a": "**Accuracy** = correct predictions ÷ all predictions (the diagonal of the confusion matrix divided by its total). **Precision** for a class = correct predictions of that class ÷ all predictions of it. **Recall** = correct predictions of that class ÷ all real cases of it. Always read them with the confusion matrix, because class imbalance can hide errors. See step 9 of *Math Behind the Graphs*."},
+    {"k": ["ai experiment", "machine learning", "random forest", "train model", "predict severity", "dummy baseline", "model training"], "a": _a_ai},
+    {"k": ["rotate", "3d chart", "3d graph", "zoom chart", "move the chart", "drag", "spin", "rotate 360"],
+     "a": "In every 3D chart: **drag** to rotate, **scroll** to zoom, **hover** a shape for its exact value, and press **⟳ Rotate 360°** for an automatic spin (**❚❚ Stop** pauses it). Use the camera icons in the chart's top-right corner to reset the view or download an image."},
+    {"k": ["2d chart", "flat chart", "classic chart", "turn off 3d", "disable 3d", "switch to 2d"],
+     "a": "Turn the **3D charts** switch in the sidebar off to see the classic flat charts. The *Math Behind the Graphs* page always stays in 3D."},
+    {"k": ["theme", "dark mode", "light mode", "light theme", "dark theme", "change colour", "change color"],
+     "a": "Use the round **theme button at the bottom-right** to switch between the *light + dark mix* and *full dark*. Your choice is remembered."},
+    {"k": ["filter", "filters", "sidebar", "select age", "narrow the data"],
+     "a": "The **sidebar filters** (age group, gender, severity of illness, payment type) apply to every page: KPIs, graphs, tables, the explorer and the downloads all update together. If nothing matches, a warning asks you to change the filters."},
+    {"k": ["download", "export", "save csv", "csv file", "save data"],
+     "a": "Download buttons appear on **Diagnosis & Stay** (diagnosis summary), **Facilities & Counties** (facility summary), **Data Quality** (cleaned sample) and **Data Explorer** (the records currently displayed). Each saves a CSV file."},
+    {"k": ["question mark", "explain this graph", "explain graph", "help icon", "what is the ? button"],
+     "a": "The small **?** button above each chart opens a plain-language explanation of that graph."},
+    {"k": ["background", "animation", "particles", "robot", "who is the robot", "the doctor"],
+     "a": "The animated background, the DNA helix in the banner and the doctor robot are drawn live with **Three.js**. They are decoration only and never change the data. If your device is slow, the *prefers reduced motion* system setting calms the animations."},
+    {"k": ["length of stay", "los", "what is los"], "a": "**Length of stay (LOS)** is the number of days a patient spends in hospital between admission and discharge. Records with missing or non-positive LOS are removed, and values are capped at 3,650 days."},
+    {"k": ["severity of illness", "what is severity", "apr severity", "minor moderate major extreme"],
+     "a": "**Severity of illness** is a standard 4-level classification (**Minor, Moderate, Major, Extreme**) of how sick a patient was, taken from the APR severity field. Unrecognised values are labelled *Unknown*."},
+    {"k": ["sparcs", "dataset", "data source", "where does the data come from", "which data"],
+     "a": "The data is the **2021 Hospital Inpatient Discharges (SPARCS, de-identified)** public dataset from New York State. To keep the app fast, up to **250,000 records** are loaded as a sample."},
+    {"k": ["mean", "average formula", "how is mean calculated"], "a": "**Mean** = sum of all values ÷ number of values. Example: stays of 2, 4 and 9 days give (2 + 4 + 9) ÷ 3 = 5 days."},
+    {"k": ["median"], "a": "**Median** is the middle value after sorting. It is less affected by a few extreme stays than the mean."},
+    {"k": ["standard deviation", "spread", "variance"], "a": "**Standard deviation** measures how far values typically sit from the mean: s = √(Σ(x − x̄)² ÷ (n − 1)). A bigger value means more spread-out stays."},
+    {"k": ["correlation", "causation"], "a": "**Correlation** (Pearson's r) runs from −1 to +1 and measures a *linear* association. It does **not** show that one thing causes the other. Ask *\"What is the correlation between stay and charges?\"* for your live value."},
+    {"k": ["limitations", "limits", "can i trust", "reliable", "accuracy of the dashboard", "sample"],
+     "a": "Key limitations: results use a **sample** (up to 250,000 rows), patterns show association **not causation**, charges are recorded amounts not treatment cost, differences between hospitals are not quality measures, and the AI model is **educational only**."},
+    {"k": ["slow", "loading", "takes long", "performance", "lag"],
+     "a": "The first load reads a large CSV, so it can take a moment; afterwards it is cached. If 3D feels slow, switch the **3D charts** toggle off, or choose *Full dark* and enable your system's reduced-motion setting."},
+    {"k": ["who made", "creator", "author", "built by", "credits", "student", "school"],
+     "a": "MediScope was created by **Sarveshwaran K** (No. 1000411, Jain Vidyalaya IB World School) as a Data Analytics project."},
+    {"k": ["technology", "built with", "libraries", "tools used", "framework", "python"],
+     "a": "MediScope uses **Python, Pandas, NumPy, Plotly, scikit-learn and Streamlit**, plus **Three.js** for the 3D background, banner and robot."},
+]
+
+DOC_FALLBACK_TIPS = [
+    "What does this page show?",
+    "What is the average length of stay?",
+    "Which facility has the most discharges?",
+    "Explain the heatmap",
+    "How do I download the data?",
+]
+
+
+_DOC_VOCAB = []
+
+
+def _doc_vocab():
+    if not _DOC_VOCAB:
+        found = set()
+        for entry in DOC_KB:
+            for kw in entry["k"]:
+                found.update(w for w in re.findall(r"[a-z0-9&']+", kw) if len(w) >= 4)
+        _DOC_VOCAB.extend(sorted(found))
+    return _DOC_VOCAB
+
+
+def doctor_reply(question, ctx):
+    text = str(question).strip()
+    if not text:
+        return "Please type a question and I'll do my best to help."
+    if _MEDICAL_PATTERN.search(text):
+        return ("I'm a data assistant, **not a clinician**, so I can't give medical advice, diagnoses or "
+                "treatment suggestions. Please speak to a qualified healthcare professional. I'm happy to "
+                "explain anything about this dashboard instead.")
+
+    words = re.findall(r"[a-z0-9&']+", text.lower())
+    if " ".join(words) in {"hi", "hey", "hello", "hii", "yo", "hola", "good day"}:
+        return DOC_KB[0]["a"]
+    vocab = _doc_vocab()
+    fixed = []
+    for w in words:
+        if len(w) >= 5 and w not in vocab:
+            close = difflib.get_close_matches(w, vocab, n=1, cutoff=0.8)
+            fixed.append(close[0] if close else w)
+        else:
+            fixed.append(w)
+    norm = " " + " ".join(fixed) + " "
+    tokens = [t for t in norm.split() if len(t) >= 5]
+    best, best_score = None, 0.0
+    for entry in DOC_KB:
+        score = 0.0
+        for kw in entry["k"]:
+            if (" " + kw) in norm:
+                score += 3 * len(kw.split())
+            elif " " not in kw and len(kw) >= 5:
+                if difflib.get_close_matches(kw, tokens, n=1, cutoff=0.85):
+                    score += 1.5
+        if score > best_score:
+            best, best_score = entry, score
+
+    if best is not None and best_score >= 3:
+        answer = best["a"]
+        try:
+            return answer(ctx) if callable(answer) else answer
+        except Exception:
+            return "I couldn't calculate that from the current data. Try changing the filters and asking again."
+
+    tips = "\n".join(f"- {t}" for t in DOC_FALLBACK_TIPS)
+    return ("I'm not sure I understood that. I can answer questions about the pages, graphs, filters, the 3D "
+            f"controls, the maths, the AI experiment and the live numbers. Try one of these:\n\n{tips}")
+
+
+def _doc_stream(text):
+    for chunk in re.findall(r"\S+\s*", text):
+        yield chunk
+        time.sleep(0.018)
+
+
+def _doctor_panel():
+    history = st.session_state.setdefault("doc_chat", [{"role": "assistant", "content": DOC_GREETING}])
+
+    stage = st.container()
+    box = st.container(height=300)
+
+    pending = None
+    cols = st.columns(3)
+    for index, label in enumerate(DOC_QUICK_QUESTIONS):
+        if cols[index % 3].button(label, key=f"doc_q_{index}", use_container_width=True):
+            pending = label
+
+    with st.form("doc_form", clear_on_submit=True):
+        typed = st.text_input(
+            "Ask Dr. MediBot",
+            placeholder="Ask any question about this web app...",
+            label_visibility="collapsed",
+        )
+        sent = st.form_submit_button("Send to Dr. MediBot", use_container_width=True)
+
+    if st.button("Clear conversation", key="doc_clear"):
+        st.session_state["doc_chat"] = [{"role": "assistant", "content": DOC_GREETING}]
+        history = st.session_state["doc_chat"]
+        pending = None
+        sent = False
+
+    question = pending or (typed.strip() if sent and typed and typed.strip() else None)
+
+    with stage:
+        st.markdown('<div class="ms-doc-stage"></div>', unsafe_allow_html=True)
+
+    ctx = {
+        "page": page,
+        "df": df,
+        "f": filtered_df,
+        "stats": cleaning_stats,
+        "ai": st.session_state.get("ai_results"),
+    }
+
+    with box:
+        for message in history:
+            with st.chat_message(message["role"], avatar="🩺" if message["role"] == "assistant" else None):
+                st.markdown(message["content"])
+        if question:
+            history.append({"role": "user", "content": question})
+            with st.chat_message("user"):
+                st.markdown(question)
+            reply = doctor_reply(question, ctx)
+            with st.chat_message("assistant", avatar="🩺"):
+                st.write_stream(_doc_stream(reply))
+            history.append({"role": "assistant", "content": reply})
+
+
+if hasattr(st, "dialog"):
+    @st.dialog("Dr. MediBot · your 3D hospital assistant", width="large")
+    def doctor_dialog():
+        _doctor_panel()
+else:
+    def doctor_dialog():
+        with st.sidebar.expander("Dr. MediBot · ask me anything", expanded=True):
+            _doctor_panel()
+
+
+# ============================================================
 # LOAD AND PREPROCESS DATA
 # ============================================================
 
@@ -2372,6 +2976,13 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
+    side_open = st.button(
+        "💬 Ask Dr. MediBot",
+        key="doc_launch_sidebar",
+        use_container_width=True,
+        help="Chat with the 3D doctor robot about anything in this web app.",
+    )
+
     st.divider()
 
     st.markdown(
@@ -2446,6 +3057,16 @@ filtered_df = filtered_df[
     & filtered_df["Severity"].astype(str).isin(selected_severities)
     & filtered_df["Payment_Type"].astype(str).isin(selected_payments)
 ]
+
+
+# ============================================================
+# DR. MEDIBOT TRIGGER (hidden button used by the floating 3D robot)
+# ============================================================
+
+open_chat = st.button("Ask Dr. MediBot", key="doc_launch")
+
+if open_chat or side_open:
+    doctor_dialog()
 
 
 # ============================================================
