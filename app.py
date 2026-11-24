@@ -548,7 +548,7 @@ MS_CSS = r"""<style>
 html, body { background: #060f1c; }
 #ms-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
 #ms-bg canvas { display: block; width: 100% !important; height: 100% !important; }
-#root, .stApp { position: relative; z-index: 1; }
+#root, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] { position: relative !important; z-index: 2 !important; }
 .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], section.main,
 [data-testid="stBottom"] > div { background: transparent !important; }
 [data-testid="stHeader"] { background: rgba(7,17,31,.55) !important; backdrop-filter: blur(14px); }
@@ -570,11 +570,15 @@ body.ms-mix #ms-cursor { mix-blend-mode: normal; opacity: .55; }
 #ms-theme-btn:active { transform: translateY(6px); box-shadow: 0 2px 0 rgba(0,120,160,.45), 0 8px 16px rgba(0,0,0,.3); }
 #ms-theme-btn i { width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(90deg, #eaf4ff 50%, #07111f 50%); border: 1px solid #00e5ff; animation: msPulse 2.4s infinite; }
 
-/* ----- light + dark mix: the content column is flipped to light, depth cards stay dark ----- */
-body.ms-mix [data-testid="stMain"] { filter: invert(1) hue-rotate(180deg); }
-body.ms-mix .hero, body.ms-mix [data-testid="stMetric"], body.ms-mix .insight-card,
-body.ms-mix [data-testid="stPlotlyChart"], body.ms-mix .mascot-wrap { filter: invert(1) hue-rotate(180deg); }
-body.ms-mix [data-testid="stMain"] [data-testid="stMetric"] { box-shadow: 0 22px 40px -18px rgba(8,30,60,.55); }
+/* ----- light + dark mix (no filters: content always stays readable) -----
+   light aurora background frames a dark glass content panel; sidebar, cards and charts are dark */
+body.ms-mix { --ms-panel: rgba(8,18,32,.86); }
+body.ms-dark { --ms-panel: rgba(7,15,28,.58); }
+[data-testid="stMain"] .block-container { background: var(--ms-panel, rgba(8,18,32,.8)); border: 1px solid rgba(0,229,255,.22);
+  border-radius: 28px; padding: 2.2rem 2.4rem 2.6rem !important; margin-top: 1rem; margin-bottom: 2.5rem;
+  backdrop-filter: blur(14px); box-shadow: 0 40px 80px -30px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06); }
+[data-testid="stMain"], [data-testid="stMain"] * { filter: none; }
+@media (max-width: 800px) { [data-testid="stMain"] .block-container { padding: 1.2rem 1rem 1.6rem !important; border-radius: 18px; } }
 
 /* ----- sidebar ----- */
 [data-testid="stSidebar"] { background: linear-gradient(190deg, rgba(11,25,43,.94), rgba(6,14,26,.96)) !important;
@@ -613,9 +617,9 @@ body.ms-mix [data-testid="stMain"] [data-testid="stMetric"] { box-shadow: 0 22px
   animation: msSpin 9s linear infinite; box-shadow: 0 30px 60px -28px rgba(0,229,255,.35); overflow: hidden; }
 [data-testid="stPlotlyChart"] .modebar { background: rgba(8,20,36,.7) !important; border-radius: 10px; }
 
-/* ----- entrance (set only by script, so content never stays hidden without JS) ----- */
-.ms-pre { opacity: 0; transform: translateY(34px) scale(.96) rotateX(8deg); }
-.ms-in { opacity: 1; transition: opacity .8s cubic-bezier(.2,.8,.2,1), transform .9s cubic-bezier(.2,.8,.2,1); }
+/* ----- entrance: animation only, elements are visible by default ----- */
+@keyframes msRise { from { opacity: 0; transform: translateY(30px) scale(.96); } to { opacity: 1; transform: none; } }
+.ms-in { animation: msRise .8s cubic-bezier(.2,.8,.2,1) backwards; }
 
 /* ----- headings, buttons, tables ----- */
 h1 { text-shadow: 0 2px 0 rgba(0,160,200,.35), 0 12px 26px rgba(0,229,255,.18); }
@@ -634,7 +638,6 @@ h2::after, h3::after { content: ""; position: absolute; left: 0; bottom: 0; widt
 .math-step b { color: #00e5ff; }
 .math-num { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; margin-right: 10px; border-radius: 10px;
   font-weight: 800; color: #07111f; background: linear-gradient(145deg, #00e5ff, #8b5cf6); box-shadow: 0 5px 0 rgba(0,100,150,.5); }
-body.ms-mix .math-step { filter: invert(1) hue-rotate(180deg); }
 
 /* ----- Dr. MediBot: floating 3D doctor + chat dialog ----- */
 .st-key-doc_launch { position: fixed !important; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
@@ -662,7 +665,6 @@ body.ms-mix .math-step { filter: invert(1) hue-rotate(180deg); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
-  .ms-pre { opacity: 1; transform: none; }
 }
 </style>
 """
@@ -1083,14 +1085,14 @@ MS_JS = r"""(function () {
 
   var io = W.IntersectionObserver ? new W.IntersectionObserver(function (entries) {
     entries.forEach(function (en) {
-      if (en.isIntersecting) { en.target.classList.remove('ms-pre'); en.target.classList.add('ms-in'); io.unobserve(en.target); }
+      if (en.isIntersecting) { en.target.classList.add('ms-in'); io.unobserve(en.target); }
     });
-  }, { threshold: 0.08 }) : null;
+  }, { threshold: 0.05 }) : null;
   function bindReveal() {
     if (!io || reduce) return;
-    D.querySelectorAll('[data-testid="stPlotlyChart"], [data-testid="stMetric"], .insight-card, [data-testid="stDataFrame"]').forEach(function (el) {
+    D.querySelectorAll('[data-testid="stPlotlyChart"], [data-testid="stMetric"], .insight-card').forEach(function (el) {
       if (el.getAttribute('data-ms-rv')) return;
-      el.setAttribute('data-ms-rv', '1'); el.classList.add('ms-pre'); io.observe(el);
+      el.setAttribute('data-ms-rv', '1'); io.observe(el);
     });
   }
 
@@ -2922,6 +2924,19 @@ if dataset_path is None:
 
 file_size = dataset_path.stat().st_size
 modified_time = dataset_path.stat().st_mtime
+
+if file_size < 2048:
+    st.markdown(
+        '<div class="hero"><div class="hero-title">Medi<span>Scope</span></div>'
+        '<div class="hero-subtitle">The dataset file was found but it is not the real data.</div></div>',
+        unsafe_allow_html=True,
+    )
+    st.error(
+        f"'{dataset_path.name}' is only {file_size} bytes. It is probably a Git LFS pointer, "
+        "not the real hospital CSV (about 800 MB). Run `git lfs pull` in the project, or copy the "
+        "real CSV next to app.py, then restart the app."
+    )
+    st.stop()
 
 try:
     with st.spinner("Loading hospital discharge data..."):
