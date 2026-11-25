@@ -15,8 +15,6 @@ import streamlit.components.v1 as components
 
 warnings.filterwarnings("ignore")
 
-# Dark base theme for Streamlit's own widgets (applied on the next start if the
-# file did not exist yet). The light/dark mix is handled by the CSS layer below.
 try:
     _config_file = Path(__file__).resolve().parent / ".streamlit" / "config.toml"
     if not _config_file.exists():
@@ -44,10 +42,6 @@ try:
 except ImportError:
     SKLEARN_AVAILABLE = False
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
 
 st.set_page_config(
     page_title="MediScope | Hospital Analytics",
@@ -100,10 +94,6 @@ COLORS = [
     "#FF7043",
 ]
 
-
-# ============================================================
-# CSS
-# ============================================================
 
 st.markdown(
     """
@@ -534,10 +524,6 @@ st.markdown(
 )
 
 
-# ============================================================
-# 3D VISUAL LAYER (CSS + THREE.JS)
-# ============================================================
-
 MS_CSS = r"""<style>
 /* ===== MediScope 3D layer: canvas, theme, depth ===== */
 @property --ms-ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
@@ -547,6 +533,9 @@ MS_CSS = r"""<style>
 
 html, body { background: #060f1c; }
 #ms-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+@keyframes msFallback { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+body.ms-nothree #ms-bg { background: linear-gradient(120deg, #060f1c, #0b2a4a, #2b1a5c, #06323a, #060f1c); background-size: 300% 300%; animation: msFallback 18s ease infinite; }
+body.ms-nothree.ms-mix #ms-bg { background: linear-gradient(120deg, #e7f1fa, #bfe6fb, #d8cdfc, #c6f3ea, #e7f1fa); background-size: 300% 300%; animation: msFallback 18s ease infinite; }
 #ms-bg canvas { display: block; width: 100% !important; height: 100% !important; }
 #root, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] { position: relative !important; z-index: 2 !important; }
 .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], section.main,
@@ -572,11 +561,11 @@ body.ms-mix #ms-cursor { mix-blend-mode: normal; opacity: .55; }
 
 /* ----- light + dark mix (no filters: content always stays readable) -----
    light aurora background frames a dark glass content panel; sidebar, cards and charts are dark */
-body.ms-mix { --ms-panel: rgba(8,18,32,.86); }
-body.ms-dark { --ms-panel: rgba(7,15,28,.58); }
+body.ms-mix { --ms-panel: rgba(8,18,32,.44); }
+body.ms-dark { --ms-panel: rgba(7,15,28,.26); }
 [data-testid="stMain"] .block-container { background: var(--ms-panel, rgba(8,18,32,.8)); border: 1px solid rgba(0,229,255,.22);
   border-radius: 28px; padding: 2.2rem 2.4rem 2.6rem !important; margin-top: 1rem; margin-bottom: 2.5rem;
-  backdrop-filter: blur(14px); box-shadow: 0 40px 80px -30px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06); }
+  backdrop-filter: blur(2px); box-shadow: 0 40px 80px -30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06); }
 [data-testid="stMain"], [data-testid="stMain"] * { filter: none; }
 @media (max-width: 800px) { [data-testid="stMain"] .block-container { padding: 1.2rem 1rem 1.6rem !important; border-radius: 18px; } }
 
@@ -663,9 +652,7 @@ h2::after, h3::after { content: ""; position: absolute; left: 0; bottom: 0; widt
 .ms-doc-stage canvas { width: 100% !important; height: 100% !important; display: block; }
 [data-testid="stDialog"] [data-testid="stChatMessage"] { background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.14); border-radius: 14px; }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
-}
+/* reduced-motion is handled in JS: animations slow down but keep running */
 </style>
 """
 
@@ -673,7 +660,13 @@ MS_JS = r"""(function () {
   'use strict';
   var W = window, D = document, B = D.body;
   var reduce = !!(W.matchMedia && W.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+  var THREE_URLS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+    'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',
+    'https://unpkg.com/three@0.128.0/build/three.min.js'
+  ];
+  /* reduced-motion: keep everything animating, just slower and gentler */
+  var SPEED = reduce ? 0.35 : 1;
   var state = { theme: 'mix', mx: 0.5, my: 0.5, px: 0, py: 0, scroll: 0, hero: null, bg: null, doc: null, stage: null, docHover: false, lastMut: 0 };
 
   try { state.theme = W.localStorage.getItem('ms-theme') || 'mix'; } catch (e) {}
@@ -770,7 +763,7 @@ MS_JS = r"""(function () {
     gradient.frustumCulled = false; gradient.renderOrder = -100; scene.add(gradient);
 
     /* particles */
-    var N = reduce ? 260 : 950;
+    var N = 950;
     var pos = new Float32Array(N * 3), seed = new Float32Array(N);
     for (var i = 0; i < N; i++) {
       pos[i * 3] = (Math.random() - 0.5) * 90; pos[i * 3 + 1] = (Math.random() - 0.5) * 60;
@@ -807,7 +800,7 @@ MS_JS = r"""(function () {
       color: PALETTE.dark.cross, emissive: 0x053a4a, metalness: 0.35, roughness: 0.25, transparent: true, opacity: 0.55
     });
     var crosses = [];
-    for (var k = 0; k < (reduce ? 6 : 15); k++) {
+    for (var k = 0; k < 15; k++) {
       var m = new THREE.Mesh(cg, crossMat), sc = 0.7 + Math.random() * 1.9;
       m.scale.set(sc, sc, sc);
       m.position.set((Math.random() - 0.5) * 70, (Math.random() - 0.5) * 42, -8 - Math.random() * 26);
@@ -817,7 +810,7 @@ MS_JS = r"""(function () {
     }
     var orbMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, wireframe: true, transparent: true, opacity: 0.2 });
     var orbs = [];
-    for (var o = 0; o < (reduce ? 3 : 7); o++) {
+    for (var o = 0; o < 7; o++) {
       var orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1 + Math.random() * 2.2, 1), orbMat);
       orb.position.set((Math.random() - 0.5) * 80, (Math.random() - 0.5) * 46, -14 - Math.random() * 20);
       orb.userData = { s: 0.1 + Math.random() * 0.25 }; scene.add(orb); orbs.push(orb);
@@ -835,14 +828,14 @@ MS_JS = r"""(function () {
     function frame() {
       W.requestAnimationFrame(frame);
       if (D.hidden) return;
-      var t = clock.getElapsedTime();
+      var t = clock.getElapsedTime() * SPEED;
       U.uTime.value = t; PU.uTime.value = t;
       U.uMouse.value.set(state.mx, 1 - state.my);
       crosses.forEach(function (c) {
-        c.rotation.x += 0.0016 * c.userData.s * 6; c.rotation.y += 0.0022 * c.userData.s * 6;
+        c.rotation.x += 0.0016 * c.userData.s * 6 * SPEED; c.rotation.y += 0.0022 * c.userData.s * 6 * SPEED;
         c.position.y = c.userData.y + Math.sin(t * c.userData.s + c.userData.f) * 1.6;
       });
-      orbs.forEach(function (o) { o.rotation.y += 0.002 * o.userData.s * 10; o.rotation.x += 0.0012 * o.userData.s * 10; });
+      orbs.forEach(function (o) { o.rotation.y += 0.002 * o.userData.s * 10 * SPEED; o.rotation.x += 0.0012 * o.userData.s * 10 * SPEED; });
       camY += ((-state.scroll * 0.012) - camY) * 0.06;
       cam.position.x += ((state.px * 3.2) - cam.position.x) * 0.04;
       cam.position.y += ((camY - state.py * 2.2) - cam.position.y) * 0.04;
@@ -857,7 +850,7 @@ MS_JS = r"""(function () {
     });
     state.bg = { setTheme: setTheme };
     setTheme(state.theme);
-    if (!reduce) frame(); else { renderer.render(scene, cam); }
+    frame();
   }
 
   /* ---------- hero DNA scene ---------- */
@@ -929,7 +922,6 @@ MS_JS = r"""(function () {
       dispose: function () { try { ro && ro.disconnect(); renderer.dispose(); renderer.forceContextLoss(); } catch (e) {} }
     };
     state.hero = api;
-    if (reduce) api.render(0);
   }
 
 
@@ -1049,7 +1041,6 @@ MS_JS = r"""(function () {
     if (state.doc && state.doc.box.isConnected) return;
     if (state.doc) state.doc.dispose();
     state.doc = doctorScene(THREE, D.getElementById('ms-doc-canvas'), { scale: 1, camZ: 6.6, y: 0.1 });
-    if (state.doc && reduce) state.doc.render(0, {});
   }
 
   function attachDoctorStage() {
@@ -1059,7 +1050,7 @@ MS_JS = r"""(function () {
     if (state.stage && state.stage.box === el && el.querySelector('canvas')) return;
     if (state.stage) { state.stage.dispose(); state.stage = null; }
     var s = doctorScene(THREE, el, { fov: 34, camZ: 6.2, scale: 1.0, y: 0.05 });
-    if (s) { state.stage = s; if (reduce) s.render(0, {}); }
+    if (s) { state.stage = s; }
   }
 
   function doctorState(t) {
@@ -1076,7 +1067,6 @@ MS_JS = r"""(function () {
       el.addEventListener('pointermove', function (e) {
         var r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
         el.style.setProperty('--mx', (x * 100).toFixed(1) + '%'); el.style.setProperty('--my', (y * 100).toFixed(1) + '%');
-        if (reduce) return;
         el.style.transform = 'perspective(900px) rotateX(' + ((0.5 - y) * max).toFixed(2) + 'deg) rotateY(' + ((x - 0.5) * max * 1.6).toFixed(2) + 'deg) translateZ(14px)';
       });
       el.addEventListener('pointerleave', function () { el.style.transform = ''; });
@@ -1089,7 +1079,7 @@ MS_JS = r"""(function () {
     });
   }, { threshold: 0.05 }) : null;
   function bindReveal() {
-    if (!io || reduce) return;
+    if (!io) return;
     D.querySelectorAll('[data-testid="stPlotlyChart"], [data-testid="stMetric"], .insight-card').forEach(function (el) {
       if (el.getAttribute('data-ms-rv')) return;
       el.setAttribute('data-ms-rv', '1'); io.observe(el);
@@ -1128,13 +1118,24 @@ MS_JS = r"""(function () {
     W.requestAnimationFrame(function () { pending = false; refresh(); });
   }).observe(B, { childList: true, subtree: true, characterData: true });
 
-  ensureChrome(); bindTilt(); bindReveal(); if (!reduce) glow();
+  ensureChrome(); bindTilt(); bindReveal(); glow();
   function ready() { initBackground(W.THREE); attachHero(); attachDoctorLauncher(); attachDoctorStage(); }
-  if (W.THREE) { ready(); } else {
-    var s = D.createElement('script'); s.src = THREE_URL; s.async = true; s.onload = ready;
-    s.onerror = function () { B.style.background = PALETTE.dark.c; };
+  function loadThree(i) {
+    if (W.THREE) { ready(); return; }
+    if (i >= THREE_URLS.length) {
+      B.classList.add('ms-nothree');           /* every CDN failed: animated CSS gradient instead */
+      try { W.console.warn('MediScope: Three.js could not be loaded from any CDN.'); } catch (e) {}
+      return;
+    }
+    var s = D.createElement('script'), done = false;
+    function next() { if (done) return; done = true; if (s.parentNode) s.parentNode.removeChild(s); loadThree(i + 1); }
+    var timer = W.setTimeout(next, 9000);
+    s.src = THREE_URLS[i]; s.async = true;
+    s.onload = function () { if (done) return; done = true; W.clearTimeout(timer); if (W.THREE) { ready(); } else { done = false; next(); } };
+    s.onerror = function () { W.clearTimeout(timer); next(); };
     D.head.appendChild(s);
   }
+  loadThree(0);
   W.__msRefresh = refresh;
 })();
 """
@@ -1150,10 +1151,6 @@ components.html(
     height=0,
 )
 
-
-# ============================================================
-# BRANDING
-# ============================================================
 
 def render_hospital_brand():
     st.markdown(
@@ -1202,10 +1199,6 @@ def render_mascot():
         unsafe_allow_html=True,
     )
 
-
-# ============================================================
-# DATASET LOADING
-# ============================================================
 
 def find_dataset():
     base = Path(__file__).resolve().parent
@@ -1267,10 +1260,6 @@ def load_dataset(path_string, file_size, modified_time, sample_rows):
     return data.loc[:, ~pd.Index(data.columns).duplicated()].copy()
 
 
-# ============================================================
-# COLUMN DETECTION
-# ============================================================
-
 def normalize_column_name(column):
     return re.sub(r"[^a-z0-9]+", "", str(column).lower())
 
@@ -1298,10 +1287,6 @@ def find_column(data, possible_names):
 
     return None
 
-
-# ============================================================
-# DATA CLEANING
-# ============================================================
 
 def parse_numeric(series):
     cleaned = (
@@ -1684,10 +1669,6 @@ def prepare_data(raw_data):
     return cleaned, stats
 
 
-# ============================================================
-# DISPLAY HELPERS
-# ============================================================
-
 def format_number(value):
     try:
         return f"{float(value):,.0f}"
@@ -1761,13 +1742,6 @@ GRAPH_EXPLANATIONS = {
     "ai_confusion_matrix": "Compares actual severity categories with the categories predicted by the demonstration machine-learning model. Rows represent actual classes and columns represent predicted classes. Larger values on the diagonal indicate correct classifications; off-diagonal values show misclassifications. This experiment is not validated for clinical use.",
 }
 
-
-# ============================================================
-# 3D CHART ENGINE
-# Converts every 2D Plotly figure used by MediScope into a
-# real 3D scene (extruded bars, solid donuts, 3D box plots,
-# KDE violins, voxel heatmaps) with rotate / zoom / hover.
-# ============================================================
 
 _CI = [0, 0, 4, 4, 0, 0, 3, 3, 0, 0, 1, 1]
 _CJ = [1, 2, 5, 6, 1, 5, 2, 6, 3, 7, 2, 6]
@@ -2447,12 +2421,6 @@ def top_values(data, column, limit=15):
     )
 
 
-# ============================================================
-# DR. MEDIBOT - 3D DOCTOR ROBOT ASSISTANT (chat engine)
-# Answers questions about the app, the charts and the live data.
-# It runs fully offline: no API key or internet connection needed.
-# ============================================================
-
 import difflib
 
 DOC_GREETING = (
@@ -2887,10 +2855,6 @@ else:
             _doctor_panel()
 
 
-# ============================================================
-# LOAD AND PREPROCESS DATA
-# ============================================================
-
 dataset_path = find_dataset()
 
 if dataset_path is None:
@@ -2961,10 +2925,6 @@ if df.empty:
     )
     st.stop()
 
-
-# ============================================================
-# SIDEBAR
-# ============================================================
 
 with st.sidebar:
     render_hospital_brand()
@@ -3060,10 +3020,6 @@ with st.sidebar:
     )
 
 
-# ============================================================
-# FILTER DATA
-# ============================================================
-
 filtered_df = df.copy()
 
 filtered_df = filtered_df[
@@ -3074,19 +3030,11 @@ filtered_df = filtered_df[
 ]
 
 
-# ============================================================
-# DR. MEDIBOT TRIGGER (hidden button used by the floating 3D robot)
-# ============================================================
-
 open_chat = st.button("Ask Dr. MediBot", key="doc_launch")
 
 if open_chat or side_open:
     doctor_dialog()
 
-
-# ============================================================
-# MAIN HEADER
-# ============================================================
 
 st.markdown(
     """
@@ -3117,10 +3065,6 @@ if filtered_df.empty:
     )
     st.stop()
 
-
-# ============================================================
-# OVERVIEW
-# ============================================================
 
 if page == "Overview":
 
@@ -3340,10 +3284,6 @@ if page == "Overview":
     )
 
 
-# ============================================================
-# DIAGNOSIS AND STAY
-# ============================================================
-
 elif page == "Diagnosis & Stay":
 
     st.title("Diagnosis & Length of Stay")
@@ -3478,10 +3418,6 @@ elif page == "Diagnosis & Stay":
         mime="text/csv",
     )
 
-
-# ============================================================
-# CHARGES AND DEMOGRAPHICS
-# ============================================================
 
 elif page == "Charges & Demographics":
 
@@ -3651,10 +3587,6 @@ elif page == "Charges & Demographics":
         hide_index=True,
     )
 
-
-# ============================================================
-# FACILITIES AND COUNTIES
-# ============================================================
 
 elif page == "Facilities & Counties":
 
@@ -3843,10 +3775,6 @@ elif page == "Facilities & Counties":
     )
 
 
-# ============================================================
-# DATA QUALITY
-# ============================================================
-
 elif page == "Data Quality":
 
     st.title("Data Quality & Preprocessing")
@@ -4032,10 +3960,6 @@ elif page == "Data Quality":
     )
 
 
-# ============================================================
-# MATHEMATICAL ANALYSIS
-# ============================================================
-
 elif page == "Mathematical Analysis":
 
     st.title("Mathematical Analysis")
@@ -4182,10 +4106,6 @@ elif page == "Mathematical Analysis":
     )
 
 
-# ============================================================
-# MATH BEHIND THE GRAPHS (new page - every graph in 3D)
-# ============================================================
-
 elif page == "Math Behind the Graphs":
 
     def step(number, title, body):
@@ -4209,7 +4129,6 @@ elif page == "Math Behind the Graphs":
     chg_all = pd.to_numeric(filtered_df["Total_Charges"], errors="coerce").replace(
         [np.inf, -np.inf], np.nan).dropna()
 
-    # ---- Step 1: counting -------------------------------------------------
     step(1, "Counting records: bar charts, KPI cards and the age graph",
          "Every bar is a <b>count</b>. For a category <i>g</i> the height is the number of "
          "records whose label equals <i>g</i>. The KPI card <i>Discharge records</i> is the "
@@ -4231,7 +4150,6 @@ elif page == "Math Behind the Graphs":
                  labels={"Count n_g": "Records (n_g)"})
     show_chart(style_plot(fig), "math_step1_counts", force_3d=True)
 
-    # ---- Step 2: percentages / donut angles ------------------------------
     step(2, "Shares and angles: the payment donut",
          "A donut slice is a <b>share</b> of the total. Its size is the share multiplied by "
          "360°, so the angle of every slice is calculated from the same counts as Step 1.")
@@ -4248,7 +4166,6 @@ elif page == "Math Behind the Graphs":
                  color_discrete_sequence=COLORS, title="Step 2 · slice size = n_g / n")
     show_chart(style_plot(fig), "math_step2_donut", force_3d=True)
 
-    # ---- Step 3: mean, median, std, histogram bins -----------------------
     step(3, "Centre, spread and bins: the length-of-stay histogram",
          "The histogram cuts the stay axis into <i>k</i> equal-width bins and counts how many "
          "stays fall in each. The mean, median and standard deviation describe the same data.")
@@ -4278,7 +4195,6 @@ elif page == "Math Behind the Graphs":
     else:
         st.info("Not enough length-of-stay values for these filters.")
 
-    # ---- Step 4: grouped means -------------------------------------------
     step(4, "Group averages: average stay and charges by severity",
          "A grouped average adds up the values of one group and divides by that group's own "
          "count. Each bar in the severity graphs is one of these divisions.")
@@ -4303,7 +4219,6 @@ elif page == "Math Behind the Graphs":
                      labels={"mean_los": "Mean stay (days)"})
         show_chart(style_plot(fig), "math_step4_means", force_3d=True)
 
-    # ---- Step 5: quartiles / box plot ------------------------------------
     step(5, "Quartiles and fences: how a box plot is built",
          "Sort the values. <b>Q1</b> is the 25th percentile, the <b>median</b> the 50th and "
          "<b>Q3</b> the 75th. The box spans Q1 to Q3. Whiskers reach the furthest values still "
@@ -4331,7 +4246,6 @@ elif page == "Math Behind the Graphs":
                      labels={"LOS_Days": "Length of stay (days)"})
         show_chart(style_plot(fig), "math_step5_box", force_3d=True)
 
-    # ---- Step 6: KDE ------------------------------------------------------
     step(6, "Smooth density: how a violin is drawn",
          "A violin replaces the histogram's blocks with a smooth curve. At every height <i>y</i> "
          "a small bell curve (kernel) is placed on each data point and all bells are added. "
@@ -4392,7 +4306,6 @@ elif page == "Math Behind the Graphs":
     else:
         st.info("Not enough charge values for these filters.")
 
-    # ---- Step 7: Pearson --------------------------------------------------
     step(7, "Correlation: do longer stays go with higher charges?",
          "Pearson's <i>r</i> multiplies how far each stay and each charge sit from their own "
          "averages. If both tend to be above (or below) average together, the sum is positive.")
@@ -4448,7 +4361,6 @@ elif page == "Math Behind the Graphs":
     else:
         st.info("At least three paired records with variation are needed for a correlation.")
 
-    # ---- Step 8: heatmap cells -------------------------------------------
     step(8, "Heatmap cells: one average per county and facility",
          "Each cell of the facility heatmap is the average stay of the records that share one "
          "county and one facility. Cells with no records stay empty. In 3D the cell value is also "
@@ -4474,7 +4386,6 @@ elif page == "Math Behind the Graphs":
     else:
         st.info("Not enough county and facility data for these filters.")
 
-    # ---- Step 9: accuracy / confusion ------------------------------------
     step(9, "Model scoring: accuracy, precision and recall",
          "The AI Experiment is scored by comparing predicted and actual severity. A correct "
          "prediction lands on the diagonal of the confusion matrix. Precision asks how many "
@@ -4497,7 +4408,6 @@ elif page == "Math Behind the Graphs":
         st.info("Train a model on the AI Experiment page and its confusion matrix will appear here "
                 "with the accuracy worked out step by step.")
 
-    # ---- Step 10: missing values ------------------------------------------
     step(10, "Data quality: missing-value percentages",
          "The data-quality graph divides the number of empty cells in a column by the number of rows.")
     st.latex(r"\text{missing}_j=\frac{\text{empty cells in column }j}{n}\times100\%")
@@ -4521,10 +4431,6 @@ elif page == "Math Behind the Graphs":
         "do not prove causation, diagnose patients or measure hospital quality."
     )
 
-
-# ============================================================
-# AI EXPERIMENT
-# ============================================================
 
 elif page == "AI Experiment":
 
@@ -4795,10 +4701,6 @@ elif page == "AI Experiment":
         )
 
 
-# ============================================================
-# DATA EXPLORER
-# ============================================================
-
 elif page == "Data Explorer":
 
     st.title("Data Explorer")
@@ -4924,10 +4826,6 @@ elif page == "Data Explorer":
                     use_container_width=True,
                 )
 
-
-# ============================================================
-# FOOTER
-# ============================================================
 
 st.markdown(
     """
