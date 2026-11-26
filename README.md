@@ -2,62 +2,71 @@
 
 # 🏥 MediScope
 
-## Smart Hospital Inpatient Discharges Analytics Dashboard
+## 3D Hospital Inpatient Discharge Analytics Dashboard
 
-MediScope is an interactive data analytics dashboard designed to analyze hospital inpatient discharge records.
+MediScope is an interactive hospital data analytics dashboard designed to explore and analyze inpatient discharge records.
 
-The system uses **Python, Pandas, NumPy, Plotly, Scikit-learn, and Streamlit** to process hospital discharge data and present meaningful insights through interactive visualizations, statistical analysis, filters, and downloadable datasets.
+The application uses **Python, Pandas, NumPy, Plotly, Streamlit, scikit-learn, and Three.js** to process hospital data and present meaningful insights through interactive visualizations, statistical analysis, machine learning, and 3D graphics.
 
-The dashboard helps users understand how factors such as **patient age, gender, race, diagnosis, severity, payment type, hospital facility, and county** are associated with hospital length of stay and healthcare charges.
+The dashboard helps users investigate patterns related to **patient demographics, diagnosis categories, length of hospital stay, healthcare charges, illness severity, payment types, hospitals, and counties**.
+
+MediScope also includes interactive 3D charts, an animated medical background, and an offline virtual assistant named Dr. MediBot.
 
 ---
 
 ## 📌 Project Overview
 
-Hospital inpatient care generates large amounts of data related to patient demographics, diagnoses, hospital stays, healthcare charges, and discharge information.
+Hospital inpatient discharge data contains information about patients who have been discharged from hospitals, including their demographics, diagnosis categories, length of stay, healthcare charges, and payment information.
 
-Analyzing this information using raw datasets can be difficult because of the volume of records and the relationships between different variables.
+Analyzing this information can help users understand patterns in hospital discharge records and compare different categories of healthcare data.
 
-MediScope addresses this problem by transforming hospital discharge records into an interactive dashboard.
+MediScope transforms the dataset into an interactive analytics platform.
 
 The system provides:
 
-- Total number of inpatient discharge records
-- Average length of hospital stay
-- Average healthcare charges
-- Patient age distribution
-- Patient distribution by payment type
-- Length-of-stay distribution
-- Average length of stay by diagnosis
-- Length-of-stay comparison by severity
-- Healthcare charges by severity
-- Healthcare charges by age group and gender
-- Hospital facility discharge analysis
-- Facility and county heatmap analysis
-- Statistical data exploration
-- Interactive filters
-- Data quality analysis
-- Machine learning classification experiment
-- Raw dataset viewing
-- Filtered dataset download
+- Total number of discharge records
+- Average and median length of hospital stay
+- Average and total recorded healthcare charges
+- Number of hospitals and counties represented
+- Patient age-group distribution
+- Payment-type distribution
+- Average length of stay by severity
+- Diagnosis-based length-of-stay analysis
+- Healthcare charge comparisons
+- Facility and county comparisons
+- Missing-value analysis
+- Potential length-of-stay outlier detection
+- Mathematical and statistical analysis
+- Interactive 3D visualizations
+- Machine-learning severity prediction experiment
+- Interactive dashboard filters
+- Raw and cleaned dataset viewing
+- Filtered dataset downloads
+- Graph explanations through `?` help buttons
+- Dr. MediBot virtual assistant
+- Dark and light-mix dashboard themes
+- Animated Three.js medical background
 
 ---
 
 ## 🎯 Project Objective
 
-The main objective of MediScope is to develop an interactive, user-centered data analytics dashboard that can be used to investigate patterns in hospital inpatient discharge records.
+The main objective of MediScope is to develop an interactive hospital data analytics dashboard that allows users to investigate patterns within inpatient discharge records.
 
 The project focuses on:
 
-1. Cleaning and preparing the hospital discharge dataset.
-2. Exploring patient demographics and hospital discharge information.
-3. Investigating relationships between diagnoses and length of stay.
-4. Comparing healthcare charges across different patient groups and severity categories.
-5. Identifying hospital facilities with high discharge volumes.
-6. Visualizing hospital discharge patterns through interactive charts.
-7. Providing an easy-to-use dashboard for healthcare data exploration.
-8. Experimenting with machine learning to classify discharge severity.
-9. Allowing users to download filtered data for further analysis.
+1. Loading and processing hospital inpatient discharge data.
+2. Detecting and standardizing relevant dataset columns.
+3. Cleaning and preparing numerical and categorical information.
+4. Applying interactive filters to hospital records.
+5. Calculating statistical measures such as mean, median, and standard deviation.
+6. Investigating relationships between hospital stay duration and healthcare charges.
+7. Comparing patient demographics and illness severity.
+8. Analyzing discharge records across hospitals and counties.
+9. Presenting data through interactive 2D and 3D visualizations.
+10. Demonstrating machine-learning classification using scikit-learn.
+11. Explaining the mathematical calculations behind the visualizations.
+12. Providing an interactive platform for exploring hospital data.
 
 ---
 
@@ -67,212 +76,518 @@ The application uses the following dataset:
 
 **Hospital_Inpatient_Discharges__SPARCS_De-Identified___2021_20231012.csv**
 
-The dataset is based on the 2021 Hospital Inpatient Discharges data published through the Statewide Planning and Research Cooperative System (SPARCS), New York State.
+The dataset contains de-identified hospital inpatient discharge information.
 
-The dataset contains hospital inpatient discharge information, including:
+The application can process up to **250,000 rows** from the supplied CSV dataset for analysis.
 
-- Patient demographic information
-- Age group
+### Dataset Information
+
+The application identifies and uses information such as:
+
+- Record ID
+- Patient Age Group
 - Gender
 - Race
-- Diagnosis information
-- Severity of illness
-- Length of hospital stay
-- Total healthcare charges
-- Payment type
-- Hospital facility
-- County
-- Discharge information
+- Severity of Illness
+- Diagnosis Description
+- Length of Stay
+- Total Charges
+- Payment Typology
+- Facility Name
+- Facility County
+- Health Service Area / Region
+- Discharge Year
+- Discharge Date
 
-The original dataset is large, containing hundreds of megabytes of data.
-
-To improve application performance and reduce memory usage, the dashboard loads a sample of up to **250,000 records**.
-
-The sample size can be adjusted in the application code.
+The application automatically detects several alternative column names so that the dataset can be processed even when the original column headings differ.
 
 ### Missing Data
 
-The dataset may contain missing values in different columns.
+The source dataset may contain missing or invalid values.
 
-The application handles missing values during data preprocessing.
+The application handles missing information during preprocessing.
 
-Categorical information is standardized, and missing values in relevant categories are represented using appropriate placeholder values.
+Examples include:
 
-Numerical fields are converted into numeric formats before analysis.
+- Missing categorical values are represented as `"Unknown"`.
+- Invalid numerical values are converted into missing numerical values.
+- Records with missing or non-positive length-of-stay values are removed.
+- Records containing negative total charges are removed.
+- Non-finite charge values are handled during cleaning.
+
+The application also records the number of original rows, cleaned rows, removed rows, and detected source columns.
 
 ---
 
 ## 🧹 Data Processing
 
-Before analysis, the dataset goes through a preprocessing stage.
+Before performing analysis, the hospital dataset goes through a preprocessing stage.
 
 The application:
 
-- Loads the CSV dataset using Pandas.
-- Standardizes column names for easier processing.
-- Converts length-of-stay values into numeric data types.
-- Converts healthcare charges into numeric values.
-- Removes records with invalid or non-positive lengths of stay.
-- Removes records containing negative healthcare charges.
-- Standardizes patient demographic categories.
-- Handles missing categorical information.
-- Processes diagnosis and severity information.
-- Organizes payment, facility, county, and region information for analysis.
-- Limits extreme length-of-stay values to reduce their effect on visualizations.
-- Applies the selected dashboard filters.
+1. Loads the CSV dataset using Pandas.
+2. Reads up to 250,000 rows.
+3. Handles different CSV encodings.
+4. Normalizes column names.
+5. Detects relevant source columns using alternative column names.
+6. Converts length-of-stay values into numerical formats.
+7. Converts total charges into numerical formats.
+8. Standardizes patient age groups.
+9. Standardizes gender categories.
+10. Standardizes severity categories into Minor, Moderate, Major, Extreme, and Unknown.
+11. Standardizes payment categories.
+12. Handles missing categorical information using `"Unknown"`.
+13. Removes records with invalid length-of-stay values.
+14. Removes records with negative charges.
+15. Limits extremely high length-of-stay values to 3,650 days.
+16. Prepares standardized columns for dashboard analysis.
+17. Applies the selected sidebar filters.
 
-These steps improve data consistency and make the dataset more suitable for statistical analysis and visualization.
+The processed dataset is then used by the dashboard visualizations, mathematical calculations, and AI experiment.
 
 ---
 
 ## 📐 Statistical Analysis
 
-MediScope uses statistical analysis to investigate patterns in hospital discharge records.
+MediScope uses statistical calculations to investigate hospital discharge patterns.
 
-### Average Length of Stay
+### 1. Mean
 
-The average length of stay represents the mean number of days patients spend in the hospital.
+The mean represents the arithmetic average of a numerical dataset.
 
-Mean Length of Stay:
+For length of stay:
 
-Mean = Σx / n
-
-Where:
-
-- x represents an individual patient's length of stay.
-- n represents the total number of valid discharge records.
-
-### Average Healthcare Charges
-
-The average healthcare charges represent the mean recorded hospital charges across the selected discharge records.
-
-Mean Charges = Σx / n
+\[
+\bar{x}=\frac{\sum_{i=1}^{n}x_i}{n}
+\]
 
 Where:
 
-- x represents an individual discharge record's healthcare charges.
-- n represents the total number of valid records.
+- \(x_i\) = Individual length of stay.
+- \(n\) = Number of valid records.
+- \(\bar{x}\) = Average length of stay.
 
-### Severity Comparison
+### 2. Median
 
-The application compares length of stay and healthcare charges across different severity categories.
+The median represents the middle value when all numerical observations are arranged in ascending order.
 
-This helps investigate whether records with different severity classifications show differences in hospitalization duration and recorded charges.
+It helps identify the central value without being as strongly affected by extreme observations as the mean.
 
-### Data Distribution
+### 3. Standard Deviation
 
-Histograms, boxplots, and violin plots are used to examine the distribution and variation of hospital stays and healthcare charges.
+Standard deviation measures the spread of values around the mean.
 
-These visualizations help identify patterns, differences, and potential outliers in the dataset.
+The application uses the sample standard deviation:
+
+\[
+s=\sqrt{\frac{\sum_{i=1}^{n}(x_i-\bar{x})^2}{n-1}}
+\]
+
+Where:
+
+- \(s\) = Sample standard deviation.
+- \(x_i\) = Individual observation.
+- \(\bar{x}\) = Mean.
+- \(n\) = Number of valid observations.
+
+### 4. Payment-Type Percentage
+
+The percentage distribution identifies the proportion of discharge records belonging to each payment category.
+
+\[
+\text{Percentage}=
+\frac{\text{Category Count}}{\text{Total Records}}\times100
+\]
+
+### 5. Pearson Correlation
+
+Pearson's correlation coefficient measures the direction and strength of a linear relationship between length of stay and total charges.
+
+\[
+r=\frac{\operatorname{Cov}(X,Y)}
+{\sigma_X\sigma_Y}
+\]
+
+Where:
+
+- \(X\) = Length of stay.
+- \(Y\) = Total recorded charges.
+- \(r\) = Pearson correlation coefficient.
+
+The value of \(r\) ranges from -1 to +1.
+
+A positive value indicates a positive linear association, while a negative value indicates a negative linear association.
+
+Correlation does not prove causation.
+
+### 6. Interquartile Range (IQR)
+
+The application uses the interquartile range to identify potential length-of-stay outliers.
+
+\[
+IQR=Q_3-Q_1
+\]
+
+Upper fence:
+
+\[
+Q_3+1.5(IQR)
+\]
+
+Lower fence:
+
+\[
+\max(0,Q_1-1.5(IQR))
+\]
+
+Records outside these fences are flagged as potential statistical outliers. They are not automatically removed.
 
 ---
 
 ## 📊 Dashboard Visualizations
 
-MediScope contains multiple interactive visualizations for exploring hospital discharge information.
+MediScope contains multiple visualizations organized into different dashboard pages.
 
-### 01 · Patient Age Distribution
+### 01 · Overview
 
-The Patient Age Distribution visualization shows the distribution of hospital discharge records across different patient age groups.
+The Overview page provides a general summary of the currently filtered hospital discharge records.
 
-The visualization uses a bar chart.
+It displays four main KPI cards:
 
-Purpose
+- Discharge Records
+- Average Length of Stay
+- Average Total Charges
+- Facilities Represented
 
-This visualization helps users understand which age groups account for a larger number of inpatient discharge records.
+It also displays three additional insights:
 
-### 02 · Payment Type Distribution
+- Median Stay
+- Total Recorded Charges
+- Counties Represented
 
-The Payment Type visualization displays the distribution of patients across different payment categories.
+The page includes four visualizations.
 
-The visualization uses a pie chart.
+**Patient Records by Age Group**
 
-Purpose
+Uses a bar chart to display the number of discharge records in each age group.
 
-This helps users understand the distribution of hospital discharge records across different payment types.
+**Primary Payment Type**
 
-### 03 · Length-of-Stay Distribution
+Uses a donut chart to show the distribution of records across payment categories.
 
-The Length-of-Stay visualization displays how hospital stay durations are distributed across discharge records.
+**Length-of-Stay Distribution**
 
-The visualization uses a histogram.
+Uses a histogram to display the frequency of different hospital stay durations.
 
-Purpose
+**Average Stay by Severity**
 
-This visualization helps identify common hospitalization durations and examine the variation in length of stay.
+Uses a bar chart to compare average length of stay across illness severity categories.
 
-### 04 · Diagnosis and Average Length of Stay
+Purpose:
 
-This visualization compares average hospital length of stay across different diagnosis categories.
+The Overview page gives users a quick understanding of the hospital discharge dataset and its major patterns.
 
-The visualization uses a bar chart.
+### 02 · Diagnosis & Stay
 
-Purpose
+The Diagnosis & Stay page investigates how hospital stay duration varies across diagnosis categories and severity groups.
 
-This helps investigate which diagnosis categories are associated with longer average hospital stays.
+It includes:
 
-### 05 · Severity and Length of Stay
+**Average Stay per Diagnosis**
 
-This visualization compares the distribution of hospital stay durations across severity categories.
+Uses a horizontal bar chart to compare the average length of stay across selected diagnosis categories.
 
-The visualization uses a boxplot.
+Users can adjust the number of diagnosis categories displayed using a slider.
 
-The boxplot displays:
+**Length of Stay by Severity**
 
-- Median length of stay
-- Middle portion of the data
-- Spread of hospitalization durations
+Uses a boxplot to compare the distribution of hospital stay duration across severity categories.
+
+The boxplot helps examine:
+
+- Median
+- First quartile
+- Third quartile
+- Interquartile range
 - Potential outliers
 
-Purpose
+**Diagnosis Summary Table**
 
-This visualization helps compare hospitalization duration across different severity classifications.
+Displays:
 
-### 06 · Healthcare Charges by Severity
+- Number of records
+- Average stay
+- Median stay
+- Average charges
 
-This visualization compares healthcare charges across different severity categories.
+The diagnosis summary can also be downloaded as a CSV file.
 
-The visualization uses a boxplot.
+Purpose:
 
-Purpose
+This page helps users examine differences in hospital stay duration across diagnosis and severity categories.
 
-This helps investigate how recorded healthcare charges vary between severity groups.
+### 03 · Charges & Demographics
 
-### 07 · Healthcare Charges by Age and Gender
+The Charges & Demographics page explores healthcare charges across different patient groups.
 
-This visualization examines healthcare charges across patient age groups and gender categories.
+It displays three main charge statistics:
 
-Purpose
+- Average Charges
+- Median Charges
+- Total Charges
 
-This helps users explore differences in recorded hospital charges between demographic groups.
+The page contains three visualizations.
 
-### 08 · Facility and County Heatmap
+**Charges by Severity**
 
-The Facility and County Heatmap displays average length of stay across hospital facilities and counties.
+Uses a boxplot to compare the distribution of total recorded charges across severity categories.
 
-The visualization uses a heatmap.
+**Average Charges by Age Group and Gender**
 
-Colour intensity represents the average length of hospital stay.
+Uses a grouped bar chart to compare average charges across patient age groups and gender categories.
 
-Purpose
+**Charge Distribution by Age Group**
 
-This visualization makes it easier to compare hospitalization patterns across different facilities and geographical areas.
+Uses a violin plot to display the distribution and density of recorded healthcare charges across age groups.
 
-### 09 · Hospital Facility Analysis
+It also provides a demographic summary table.
 
-This visualization compares hospital facilities using discharge volume and average length of stay.
+Purpose:
 
-Purpose
+This page helps investigate how recorded healthcare charges vary across patient demographics and illness severity.
 
-This helps identify facilities with higher discharge volumes and investigate differences in average hospitalization duration.
+### 04 · Facilities & Counties
 
-### 10 · Healthcare Charge Distribution
+The Facilities & Counties page compares hospital discharge volume and length of stay across healthcare facilities and geographical areas.
 
-This visualization uses a violin plot to display the distribution of healthcare charges.
+It contains three main visualizations.
 
-Purpose
+**Facilities with the Most Discharge Records**
 
-This helps users examine the spread and variation of recorded hospital charges.
+Uses a bar chart to rank facilities by discharge volume.
+
+**Average Length of Stay by Facility**
+
+Compares average length of stay across selected high-volume facilities.
+
+**County and Facility Heatmap**
+
+Uses a heatmap to display average length of stay for combinations of counties and facilities.
+
+The page also provides a facility summary table that can be downloaded as a CSV file.
+
+Purpose:
+
+This page helps users compare the distribution of discharge records and average hospital stay across different facilities and counties.
+
+### 05 · Data Quality
+
+The Data Quality page examines the condition of the source dataset and the preprocessing process.
+
+It displays:
+
+- Original number of rows
+- Number of cleaned rows
+- Number of removed rows
+- Detected source columns
+- Preprocessing steps
+- Missing-value percentages
+- Potential length-of-stay outliers
+- Cleaned dataset preview
+
+**Missing-Value Profile**
+
+Uses a bar chart to show the percentage of missing values across dataset columns.
+
+**Length-of-Stay Outliers**
+
+Uses the Interquartile Range method to identify potential outlier records.
+
+The cleaned dataset sample can be downloaded as a CSV file.
+
+Purpose:
+
+This page helps users understand the quality of the source data and how the application prepares it for analysis.
+
+### 06 · Mathematical Analysis
+
+The Mathematical Analysis page explains the statistical calculations used by MediScope.
+
+It contains six main sections:
+
+1. Descriptive statistics for length of stay.
+2. Descriptive statistics for healthcare charges.
+3. Percentage distribution by payment type.
+4. Comparison of discharge records across severity categories.
+5. Pearson correlation between length of stay and total charges.
+6. Explanation of how mathematical calculations are used by the dashboard.
+
+The results are recalculated using the currently filtered records.
+
+Purpose:
+
+This page demonstrates how mathematical and statistical concepts are applied to real-world hospital discharge data.
+
+### 07 · Math Behind the Graphs
+
+The Math Behind the Graphs page explains how the dashboard converts raw records into mathematical calculations and 3D visualizations.
+
+It contains ten calculation steps.
+
+**Step 1 · Counting Records**
+
+Explains how category counts are calculated and used in bar charts and KPI cards.
+
+\[
+n_g=\sum_{i=1}^{n}\mathbf{1}[g_i=g]
+\]
+
+**Step 2 · Payment Shares and Angles**
+
+Explains how payment-category percentages and donut chart angles are calculated.
+
+\[
+p_g=\frac{n_g}{n}\times100
+\]
+
+\[
+\theta_g=\frac{n_g}{n}\times360^\circ
+\]
+
+**Step 3 · Mean, Median, Standard Deviation and Histogram Bins**
+
+Explains how length-of-stay values are grouped into histogram intervals and how the mean, median, standard deviation, and bin width are calculated.
+
+**Step 4 · Grouped Means**
+
+Explains how average length of stay and charges are calculated for each severity group.
+
+\[
+\bar{x}_g=\frac{1}{n_g}\sum_{i\in g}x_i
+\]
+
+**Step 5 · Boxplot Quartiles**
+
+Explains how quartiles and the interquartile range represent the distribution of hospital stay durations.
+
+**Step 6 · Violin and Density Distributions**
+
+Explains how recorded healthcare charges are distributed across age groups using density-based visualization.
+
+**Step 7 · Pearson Correlation**
+
+Explains the relationship between length of stay and total charges.
+
+It also displays the correlation value, least-squares regression line, and an interactive 3D scatter plot.
+
+**Step 8 · County and Facility Heatmap**
+
+Explains how the average length of stay is calculated for each county and facility combination.
+
+**Step 9 · AI Model Evaluation**
+
+Explains the mathematical calculations behind classification accuracy, precision, recall, and the confusion matrix.
+
+**Step 10 · Missing-Value Percentages**
+
+Explains how the percentage of missing values is calculated for individual dataset columns.
+
+\[
+\text{Missing Percentage}=
+\frac{\text{Missing Cells}}{\text{Total Records}}\times100
+\]
+
+Purpose:
+
+This page connects mathematical concepts to the actual visualizations produced by the application. Users can examine the formulas, live calculated values, and their corresponding 3D graphs.
+
+### 08 · AI Experiment
+
+The AI Experiment page demonstrates machine-learning classification using scikit-learn.
+
+The purpose is to predict standardized illness severity categories using demographic and administrative information.
+
+Users can select input features such as:
+
+- Age Group
+- Gender
+- Race
+- Payment Type
+- Diagnosis
+- County
+
+Two model options are available:
+
+**Random Forest**
+
+Uses a Random Forest classification model containing 100 decision trees.
+
+**Dummy Baseline**
+
+Uses a simple most-frequent-class prediction strategy as a baseline for comparison.
+
+Users can also select the percentage of records used for testing.
+
+The application:
+
+1. Prepares the selected input features.
+2. Removes records with unknown severity targets.
+3. Selects eligible severity classes.
+4. Splits the records into training and testing datasets.
+5. Applies categorical preprocessing.
+6. Trains the selected classification model.
+7. Predicts severity categories.
+8. Calculates test accuracy.
+9. Displays a confusion matrix.
+10. Generates a classification report.
+
+The results include:
+
+- Test Accuracy
+- Training Records
+- Testing Records
+- Actual vs Predicted Severity
+- Confusion Matrix
+- Precision
+- Recall
+- F1-score
+
+Purpose:
+
+This page demonstrates how machine learning can be applied to structured hospital discharge data.
+
+The experiment is educational and is not validated for clinical use.
+
+### 09 · Data Explorer
+
+The Data Explorer page allows users to search and examine processed hospital discharge records.
+
+Users can search using:
+
+- Facility
+- Diagnosis
+- County
+- Region
+- Record ID
+
+The page also provides filters for:
+
+- Length-of-stay range
+- Maximum total charges
+
+The filtered records are displayed in an interactive data table.
+
+Users can download the displayed records as a CSV file.
+
+The page also provides a numerical summary of selected columns.
+
+Output file:
+
+`mediscope_filtered_records.csv`
+
+Purpose:
+
+This page allows users to examine individual records and export selected data for further analysis.
 
 ---
 
@@ -280,106 +595,178 @@ This helps users examine the spread and variation of recorded hospital charges.
 
 The dashboard provides interactive filters through the sidebar.
 
-Users can filter the dataset using available categories such as:
+Users can filter the dataset using:
 
-- Patient age group
+- Age Group
 - Gender
-- Severity
-- Payment type
+- Severity of Illness
+- Payment Type
 
-The selected filters are applied dynamically to the dashboard.
+The application also includes a 3D Charts toggle.
 
 When filters are changed:
 
 - KPI values update.
 - Graphs update.
 - Statistical information updates.
-- The displayed dataset updates.
-- The downloadable dataset updates.
+- Diagnosis comparisons update.
+- Facility and county comparisons update.
+- Data Explorer records update.
+- Mathematical calculations update.
 
-This allows users to explore specific subsets of hospital discharge records.
+This allows users to investigate different subsets of the hospital discharge dataset without manually editing the source CSV.
 
 ---
 
 ## 📈 Key Performance Indicators
 
-The dashboard displays important summary metrics.
+The Overview page displays four primary KPIs.
 
-### Total Discharge Records
+### Discharge Records
 
-Shows the number of hospital discharge records currently included after applying the selected filters.
+Shows the number of hospital discharge records included after applying the selected filters.
 
 ### Average Length of Stay
 
-Shows the average number of days patients spent in the hospital within the currently filtered dataset.
+Shows the average number of inpatient days across the currently filtered records.
 
-### Average Healthcare Charges
+\[
+\text{Average Stay}=\frac{\sum LOS}{n}
+\]
 
-Shows the average recorded healthcare charges within the selected discharge records.
+### Average Total Charges
 
-### Additional Metrics
+Shows the average recorded healthcare charges for the currently filtered records.
 
-Other metrics can be explored through the dashboard visualizations and data analysis sections.
+### Facilities Represented
 
----
+Shows the number of distinct healthcare facilities represented in the filtered dataset.
 
-## 📋 Raw Dataset
-
-The Raw Dataset section allows users to inspect hospital discharge records directly inside the application.
-
-The application provides:
-
-- Number of filtered records
-- Filtered dataset viewing
-- Search and filtering options
-- CSV download option
-
-Users can download the currently filtered dataset as a CSV file.
-
-This allows users to continue working with the selected hospital discharge data offline.
+The dashboard also displays median stay, total recorded charges, and the number of counties represented.
 
 ---
 
-## 🤖 AI Experiment
+## 🧊 3D Visualization System
 
-MediScope includes a machine learning experiment for classifying hospital discharge severity.
+MediScope includes a dedicated 3D visualization engine.
 
-The experiment uses Scikit-learn to train a classification model using selected dataset features.
+The system uses **Plotly 3D graphics and Three.js** to provide a more interactive visual experience.
 
-The application uses a Random Forest classification model when the required machine learning dependencies are available.
+The 3D chart engine converts supported Plotly visualizations into 3D representations.
 
-The experiment includes:
+The visualizations include:
 
-- Data preparation for model training
-- Feature selection
-- Training and testing data separation
-- Severity classification
-- Classification performance evaluation
-- Confusion matrix visualization
+- Extruded 3D bar charts
+- Solid 3D donut charts
+- 3D boxplots
+- 3D violin plots
+- 3D heatmaps
+- 3D scatter plots
+- 3D density surfaces
 
-Purpose
+### 3D Chart Controls
 
-This experiment demonstrates how machine learning can be applied to structured hospital discharge data.
+Users can interact with the 3D visualizations through:
 
-The model is intended for educational exploration only. Its predictions are not validated medical assessments and must not be used for clinical decisions.
+- Dragging to rotate the graph.
+- Scrolling to zoom.
+- Hovering over objects to inspect exact values.
+- Using the automatic 360-degree rotation control where available.
+
+The 3D Charts toggle allows users to switch between the supported 3D chart presentation and traditional 2D charts.
+
+The Math Behind the Graphs page uses 3D visualizations for its supported graph demonstrations.
+
+### Animated Background
+
+The application also includes a Three.js animated background.
+
+It contains:
+
+- Animated particle effects.
+- Floating 3D medical crosses.
+- Rotating wireframe geometric objects.
+- Animated gradient lighting.
+- Mouse-responsive background effects.
+- Animated DNA visualization in the main hero section.
+- A floating 3D Dr. MediBot character.
+
+The background is designed to remain behind the main dashboard interface.
 
 ---
 
-## 🧪 Data Quality Analysis
+## 🤖 Dr. MediBot
 
-The Data Quality section provides an overview of the dataset after preprocessing.
+MediScope includes an interactive virtual assistant named **Dr. MediBot**.
 
-It helps users investigate:
+Dr. MediBot provides explanations and guidance about the dashboard.
 
-- Missing values
-- Data availability
-- Invalid records removed during preprocessing
-- Data consistency
-- Selected dataset characteristics
+Users can ask questions about:
 
-Purpose
+- Dashboard pages.
+- Graph interpretations.
+- Mathematical calculations.
+- Statistical concepts.
+- Interactive filters.
+- 3D chart controls.
+- Current filtered dataset values.
+- AI model accuracy and evaluation.
 
-This section helps users understand the quality of the source dataset and the importance of data preprocessing before performing analysis.
+The assistant includes suggested questions to help users get started.
+
+The chat engine runs locally within the application and does not require an external AI API key.
+
+The floating 3D doctor character provides an interactive entry point to the assistant.
+
+Purpose:
+
+Dr. MediBot helps users understand the dashboard and its analytical features.
+
+---
+
+## ❓ Graph Explanations
+
+Major dashboard visualizations include a `?` help button.
+
+The help button provides an explanation of:
+
+- What the graph represents.
+- Which variables are being compared.
+- What the axes represent.
+- How the graph should be interpreted.
+- What patterns users can investigate.
+
+For supported 3D graphs, the explanation also describes how to rotate, zoom, and inspect values.
+
+This feature makes the dashboard easier to understand for users who may not have previous experience with data visualization.
+
+---
+
+## 🎨 Dashboard Customization
+
+MediScope includes a theme-switching feature.
+
+Users can switch between:
+
+**Full Dark Theme**
+
+Displays the interface using a dark appearance.
+
+**Light + Dark Mix**
+
+Combines the animated light-toned background with a dark glass-style dashboard interface.
+
+The application also includes:
+
+- Animated gradient effects.
+- Glass-style dashboard panels.
+- Animated chart borders.
+- Interactive hover effects.
+- 3D depth effects.
+- Responsive layout.
+- Animated medical background objects.
+
+The design aims to maintain readability while presenting an interactive dashboard.
 
 ---
 
@@ -387,9 +774,9 @@ This section helps users understand the quality of the source dataset and the im
 
 ### Programming Language
 
-**Python 3.13**
+**Python**
 
-Python is used for application development, data processing, statistical calculations, and machine learning.
+Python is used for the main application logic, dataset processing, calculations, and machine-learning implementation.
 
 ### Data Processing
 
@@ -397,42 +784,54 @@ Python is used for application development, data processing, statistical calcula
 
 Pandas is used for:
 
-- Loading the dataset
-- Cleaning data
-- Handling missing values
-- Filtering records
-- Grouping data
-- Calculating statistical measures
-- Preparing data for visualization
+- Loading CSV datasets.
+- Cleaning data.
+- Detecting and standardizing columns.
+- Filtering records.
+- Grouping data.
+- Calculating statistics.
+- Preparing summary tables.
 
 **NumPy**
 
-NumPy is used for numerical operations and data calculations.
+NumPy is used for:
+
+- Numerical calculations.
+- Array operations.
+- Statistical processing.
+- Handling numerical values.
+- Preparing visualization data.
 
 ### Data Visualization
 
 **Plotly**
 
-Plotly is used to create interactive:
+Plotly is used to create:
 
-- Bar charts
-- Pie charts
-- Histograms
-- Boxplots
-- Violin plots
-- Heatmaps
+- Bar charts.
+- Pie and donut charts.
+- Histograms.
+- Scatter plots.
+- Boxplots.
+- Violin plots.
+- Heatmaps.
+- Interactive 3D visualizations.
 
 ### Machine Learning
 
-**Scikit-learn**
+**scikit-learn**
 
-Scikit-learn is used for:
+scikit-learn is used for:
 
-- Classification model development
-- Random Forest classification
-- Training and testing data preparation
-- Model evaluation
-- Confusion matrix generation
+- Data preprocessing.
+- Missing-value handling.
+- One-hot encoding.
+- Training and testing data splitting.
+- Random Forest classification.
+- Dummy baseline classification.
+- Accuracy calculation.
+- Classification reports.
+- Model evaluation.
 
 ### Web Application
 
@@ -440,34 +839,62 @@ Scikit-learn is used for:
 
 Streamlit is used to build the interactive dashboard and provide:
 
-- Sidebar filters
-- Navigation sections
-- KPI cards
-- Interactive graphs
-- Dataset viewing
-- CSV download
-- Data analysis
-- Machine learning experiment
+- Sidebar navigation.
+- Dashboard filters.
+- KPI cards.
+- Interactive graphs.
+- Data tables.
+- CSV downloads.
+- Mathematical analysis.
+- AI experiment controls.
+- Dr. MediBot interface.
+
+### 3D Graphics and Animation
+
+**Three.js**
+
+Three.js is used for:
+
+- Animated backgrounds.
+- Floating medical objects.
+- Particle systems.
+- DNA visualization.
+- 3D Dr. MediBot character.
+
+**JavaScript and CSS**
+
+JavaScript and CSS are used for:
+
+- 3D scene initialization.
+- Animation loops.
+- Interactive background effects.
+- Theme switching.
+- Hover effects.
+- Dashboard styling.
+- Responsive visual elements.
 
 ---
 
 ## 📦 Project Structure
 
+MediScope/
+
 ```text
-1000411-sarveshwaran-Hospital-Inpatient-Discharges/
+MediScope/
 │
 ├── app.py
+│
+├── Hospital_Inpatient_Discharges__SPARCS_De-Identified___2021_20231012.csv
 │
 ├── requirements.txt
 │
 ├── README.md
 │
-└── Hospital_Inpatient_Discharges__SPARCS_De-Identified___2021_20231012.csv
+└── .streamlit/
+    └── config.toml
 ```
 
-The CSV dataset may also be placed inside a `data/` or `dataset/` folder.
-
-The application searches the supported locations for the dataset.
+The `.streamlit/config.toml` file is created automatically by the application if it does not already exist.
 
 ---
 
@@ -476,13 +903,13 @@ The application searches the supported locations for the dataset.
 Clone the repository:
 
 ```bash
-git clone https://github.com/sarveshwaran777333/1000411-sarveshwaran-Hospital-Inpatient-Discharges.git
+git clone YOUR_GITHUB_REPOSITORY_URL
 ```
 
 Move into the project folder:
 
 ```bash
-cd 1000411-sarveshwaran-Hospital-Inpatient-Discharges
+cd MediScope
 ```
 
 Install the required packages:
@@ -491,21 +918,27 @@ Install the required packages:
 pip install -r requirements.txt
 ```
 
+Make sure the hospital discharge CSV file is available in the same folder as `app.py` or inside a supported `data/` or `dataset/` folder.
+
 ---
 
 ## 📦 Requirements
 
 The project requires the following Python libraries:
 
-- streamlit
-- pandas
-- numpy
-- plotly
-- scikit-learn
+```text
+streamlit
+pandas
+numpy
+plotly
+scikit-learn
+```
 
-These dependencies are also provided in:
+These dependencies should also be provided in:
 
 `requirements.txt`
+
+The 3D visual layer loads Three.js through a CDN and requires browser access to an available CDN.
 
 ---
 
@@ -521,45 +954,103 @@ The application will open in a web browser.
 
 After opening the dashboard:
 
-- Explore the Overview section.
-- Use the sidebar filters.
-- Explore the diagnosis and length-of-stay visualizations.
-- Compare healthcare charges across severity categories.
-- Open the Facilities and Counties section.
-- Inspect the Data Quality section.
-- Explore the AI Experiment.
-- Open the Data Explorer section.
-- Download filtered records if required.
+1. Explore the Overview page.
+2. Use the sidebar filters to select patient groups.
+3. Open the Diagnosis & Stay page.
+4. Compare healthcare charges and demographics.
+5. Explore Facilities & Counties.
+6. Examine data preprocessing in Data Quality.
+7. Open Mathematical Analysis to inspect statistical calculations.
+8. Explore Math Behind the Graphs to understand the formulas.
+9. Open AI Experiment to train and evaluate a classification model.
+10. Use Data Explorer to search and download records.
+11. Switch between 2D and 3D charts using the sidebar toggle.
+12. Rotate and zoom the interactive 3D graphs.
+13. Use the `?` buttons to understand the visualizations.
+14. Interact with Dr. MediBot.
+15. Change the dashboard theme using the theme switch.
 
 ---
 
 ## 🔬 Testing
 
-The dashboard can be tested using different filter combinations.
+The application should be tested using different filter combinations and dashboard features.
+
+### Filter Testing
 
 Examples include:
 
-- Different patient age groups
-- Different gender categories
-- Different severity categories
-- Different payment types
-- Multiple filters at the same time
+- Different age groups.
+- Different genders.
+- Different severity categories.
+- Different payment types.
+- Multiple filters at the same time.
 
 Testing should verify that:
 
 - KPI values update correctly.
 - Graphs respond to selected filters.
-- Average length-of-stay calculations work correctly.
-- Healthcare charge calculations work correctly.
-- Diagnosis comparisons display the correct data.
-- Severity comparisons update correctly.
-- Facility and county visualizations display correctly.
-- The raw dataset matches the selected filters.
-- The download option exports the filtered records.
-- Missing-value analysis works correctly.
-- The AI experiment handles the available data correctly.
-- Empty filter results are handled correctly.
-- Dashboard navigation works correctly.
+- Statistical calculations update.
+- Diagnosis comparisons reflect the selected data.
+- Facility and county summaries update.
+- Data Explorer records match the filters.
+
+### Visualization Testing
+
+Testing should verify that:
+
+- All dashboard graphs render correctly.
+- The 2D and 3D chart toggle works.
+- 3D graphs can be rotated.
+- Zooming works correctly.
+- Hover information displays the correct values.
+- Graph explanation buttons display relevant information.
+- The animated background does not cover dashboard content.
+
+### Mathematical Testing
+
+Testing should verify that:
+
+- Mean values are calculated correctly.
+- Median values are calculated correctly.
+- Standard deviation is calculated correctly.
+- Payment percentages are calculated correctly.
+- Pearson correlation is calculated correctly.
+- IQR outlier limits are calculated correctly.
+- Mathematical calculations respond to filters.
+
+### AI Experiment Testing
+
+Testing should verify that:
+
+- Feature selection works.
+- Random Forest training runs.
+- Dummy baseline training runs.
+- Training and testing records are separated.
+- Accuracy is calculated correctly.
+- The confusion matrix displays correctly.
+- The classification report is generated.
+
+### Data Export Testing
+
+Testing should verify that:
+
+- Cleaned data can be downloaded.
+- Diagnosis summaries can be downloaded.
+- Facility summaries can be downloaded.
+- Data Explorer records can be downloaded.
+- Exported CSV files contain the expected filtered records.
+
+### Interface Testing
+
+Testing should verify that:
+
+- Sidebar navigation works.
+- Dr. MediBot opens correctly.
+- Theme switching works.
+- Text remains readable.
+- Dashboard elements remain visible.
+- The interface remains usable at different screen sizes.
 
 ---
 
@@ -569,42 +1060,45 @@ MediScope has several limitations.
 
 ### Dataset Dependency
 
-The quality of the analysis depends on the quality and completeness of the original hospital discharge dataset.
+The quality of the analysis depends on the completeness and accuracy of the supplied hospital discharge dataset.
 
-### Sample-Based Analysis
+### Sample Size
 
-The application loads up to 250,000 records from the original dataset to reduce memory usage and improve performance.
+The application processes up to 250,000 rows from the CSV dataset.
 
-Therefore, the displayed results may differ from calculations performed using the complete dataset.
-
-### Correlation Does Not Prove Causation
-
-The visualizations show patterns and relationships between variables.
-
-They do not prove that a particular patient characteristic, diagnosis, or hospital factor directly causes a change in length of stay or healthcare charges.
-
-### Missing Information
-
-Some potentially important healthcare factors may not be available in the dataset, such as:
-
-- Detailed patient medical history
-- Individual treatment information
-- Specific clinical procedures
-- Real-time hospital occupancy
-- Detailed treatment outcomes
-- Individual patient recovery information
+The displayed results therefore represent the loaded sample and may not describe every record in the original dataset.
 
 ### Static Dataset
 
-The dashboard analyzes the provided 2021 dataset and does not automatically receive live hospital discharge information.
+The application uses a supplied CSV file and does not automatically receive live hospital information.
 
-### Machine Learning Limitations
+### Correlation Does Not Prove Causation
 
-The severity classification experiment is based on the available dataset and selected features.
+The statistical analysis identifies associations between variables such as length of stay and total charges.
 
-Its performance depends on data quality, feature selection, class distribution, and model evaluation.
+These relationships do not prove that one variable directly causes changes in another.
 
-The experiment is educational and is not a validated clinical prediction system.
+### Healthcare Charges
+
+Recorded total charges should not automatically be interpreted as the actual amount paid by a patient or as a measure of healthcare quality.
+
+### Machine-Learning Limitations
+
+The AI experiment is an educational demonstration using the available dataset sample.
+
+Its predictions are not clinically validated and should not be used to make medical decisions.
+
+### 3D Graphics Requirements
+
+The animated background and some 3D features require browser WebGL support and access to a working Three.js CDN.
+
+Performance may vary depending on the device and browser.
+
+### Missing Information
+
+The analysis is limited to the variables included in the dataset.
+
+Additional clinical, operational, and contextual information may be required for more detailed hospital analysis.
 
 ---
 
@@ -612,48 +1106,86 @@ The experiment is educational and is not a validated clinical prediction system.
 
 Possible future improvements include:
 
-- Adding support for processing the complete dataset efficiently.
-- Adding more detailed diagnosis analysis.
-- Adding additional patient demographic comparisons.
-- Adding discharge outcome analysis.
-- Adding hospital occupancy analysis.
+- Adding support for additional hospital datasets.
+- Adding date-range filters.
+- Adding year-by-year comparisons.
 - Adding more advanced statistical analysis.
-- Improving machine learning model evaluation.
-- Comparing multiple classification algorithms.
-- Adding more interactive geographical visualizations.
-- Adding year-wise hospital discharge comparisons.
-- Adding more detailed data quality reports.
-- Adding automated analytical reports.
-- Improving dashboard performance for larger datasets.
+- Adding additional machine-learning models.
+- Improving model evaluation and validation.
+- Adding predictive analytics for hospital stay duration.
+- Adding more 3D chart types.
+- Adding downloadable analytical reports.
+- Improving performance with larger datasets.
+- Adding additional interactive geographical visualizations.
+- Improving mobile responsiveness.
+- Adding more advanced data-quality checks.
+- Adding a persistent dataset-management system.
+- Expanding Dr. MediBot with additional analytical explanations.
 
 ---
 
 ## 📚 Research and Learning
 
-This project demonstrates the application of several data analytics and artificial intelligence concepts:
+This project demonstrates the application of several data analytics and computer science concepts.
 
+**Data Processing**
+
+- CSV Data Loading
 - Data Cleaning
+- Column Detection
+- Data Standardization
+- Missing-Value Handling
 - Data Preprocessing
-- Missing Value Handling
-- Descriptive Statistics
+
+**Mathematics and Statistics**
+
 - Mean
-- Data Filtering
-- Grouped Data Analysis
-- Healthcare Data Analysis
-- Data Visualization
+- Median
+- Standard Deviation
+- Percentages
+- Frequency Distribution
+- Quartiles
+- Interquartile Range
+- Pearson Correlation
+- Linear Regression
+- Grouped Statistical Analysis
+
+**Data Visualization**
+
+- Bar Chart Analysis
+- Donut Chart Analysis
 - Histogram Analysis
 - Boxplot Analysis
 - Violin Plot Analysis
 - Heatmap Analysis
-- Interactive Dashboards
-- CSV Data Processing
-- Data Export
-- Machine Learning Classification
-- Random Forest
-- Model Evaluation
-- Confusion Matrix
+- Scatter Plot Analysis
+- Interactive 3D Visualization
 
-The project demonstrates how raw hospital discharge data can be transformed into an interactive analytical dashboard that helps users investigate healthcare-related patterns.
+**Artificial Intelligence and Machine Learning**
+
+- Categorical Data Encoding
+- Data Imputation
+- Training and Testing Splits
+- Random Forest Classification
+- Baseline Classification
+- Confusion Matrices
+- Accuracy
+- Precision
+- Recall
+- F1-score
+
+**Computer Science and Interface Development**
+
+- Python Programming
+- JavaScript
+- CSS
+- Streamlit Application Development
+- Three.js
+- WebGL
+- Interactive User Interfaces
+- 3D Graphics and Animation
+
+The project demonstrates how raw hospital discharge information can be transformed into an interactive analytics platform by combining data processing, mathematics, statistics, machine learning, and 3D visualization.
 
 ---
 
@@ -661,77 +1193,80 @@ The project demonstrates how raw hospital discharge data can be transformed into
 
 The application is designed to run using Streamlit.
 
-The project can be hosted using a Streamlit-compatible deployment platform with the following files:
+It can be hosted on a Streamlit-compatible deployment platform.
 
-```text
-app.py
-requirements.txt
-README.md
-```
+The deployment environment requires:
 
-The hospital discharge CSV must also be accessible to the deployed application.
+- `app.py`
+- `requirements.txt`
+- The hospital discharge CSV dataset
 
-Because the original dataset is large, deployment requires an appropriate data-hosting strategy and sufficient memory and storage.
+The dataset must be accessible to the application at runtime.
+
+Because the source CSV is large, the deployment process must account for file-size restrictions. Git LFS or an appropriate external storage solution may be required to provide the actual dataset to the application.
+
+The browser must also be able to load Three.js from an available CDN for the animated 3D background and related visual elements.
 
 **GitHub Repository:**
 
-https://github.com/sarveshwaran777333/1000411-sarveshwaran-Hospital-Inpatient-Discharges
+Add the MediScope repository URL after publishing the project.
 
 **Live Demo:**
 
-https://1000411-sarveshwaran-hospital-inpatient-discharges-cnptg9nvq8j.streamlit.app/
+Add the deployed Streamlit application URL after deployment.
+
 ---
 
 ## 👨‍💻 Project Information
 
-Project: MediScope
+**Project:** MediScope
 
-Title: Smart Hospital Inpatient Discharges Analytics Dashboard
+**Title:** 3D Hospital Inpatient Discharge Analytics Dashboard
 
-Course: Data Analytics
+**Assessment:** Summative Assessment (SA)
 
-CRS: Artificial Intelligence
+**Course:** Data Analytics
 
-Programming Language: Python 3.13
+**Programming Language:** Python
 
-Data Processing: Pandas, NumPy
+**Data Processing:** Pandas and NumPy
 
-Visualization: Plotly
+**Visualization:** Plotly
 
-Machine Learning: Scikit-learn
+**Machine Learning:** scikit-learn
 
-Application Framework: Streamlit
+**3D Graphics:** Three.js and WebGL
 
-Dataset: Hospital_Inpatient_Discharges__SPARCS_De-Identified___2021_20231012.csv
+**Application Framework:** Streamlit
 
-GitHub Repository:
-
-https://github.com/sarveshwaran777333/1000411-sarveshwaran-Hospital-Inpatient-Discharges
-
-Testing:
-
-To validate usability and overall user experience, the Streamlit dashboard should be tested using different filter combinations and dataset selections. Testing should evaluate navigation, chart clarity, filtering behaviour, data accuracy, and dashboard responsiveness. Particular attention should be given to initial loading time because of the large dataset size.
+**Dataset:** Hospital Inpatient Discharges (SPARCS De-Identified) – 2021
 
 ---
 
 ## 📌 Conclusion
 
-MediScope demonstrates how Python-based data analytics can be used to explore hospital inpatient discharge information.
+MediScope demonstrates how Python-based data analytics can be applied to hospital inpatient discharge information.
 
-By combining data preprocessing, statistical analysis, interactive filtering, data visualization, and machine learning, the dashboard provides a simple way to investigate relationships between patient demographics, diagnoses, hospital stays, healthcare charges, and hospital facilities.
+By combining data preprocessing, statistical calculations, interactive filtering, machine learning, and 3D visualization, the application provides a platform for exploring relationships between patient demographics, diagnosis categories, length of hospital stay, healthcare charges, illness severity, and healthcare facilities.
 
-The visualizations provide different perspectives on hospital discharge patterns, while the interactive filtering system allows users to explore specific subsets of the dataset.
+The nine dashboard pages provide different perspectives on the dataset.
 
-The Data Quality section helps users understand the importance of preprocessing, and the AI Experiment demonstrates how machine learning classification can be applied to structured healthcare data.
+The Mathematical Analysis page explains the statistical methods used by the application, while Math Behind the Graphs connects mathematical formulas to the actual 3D visualizations.
 
-Overall, MediScope demonstrates how raw hospital discharge records can be transformed into a useful and interactive data analytics solution using Python, Pandas, NumPy, Plotly, Scikit-learn, and Streamlit.
+The AI Experiment demonstrates machine-learning classification using scikit-learn, and Data Explorer allows users to search, inspect, and download processed records.
 
-**Credits:**
+The 3D visualization system, animated medical background, and Dr. MediBot assistant provide additional interactive features that improve the overall dashboard experience.
 
-Name: Sarveshwaran K
+Overall, MediScope demonstrates how raw hospital discharge records can be transformed into an interactive hospital analytics application using Python, Pandas, NumPy, Plotly, Streamlit, scikit-learn, and Three.js.
 
-No: 1000411
+---
 
-School Name: Jain Vidyalaya IB World School
+## Credits
 
-Mentor's Name: Add mentor's name
+**Name:** Sarveshwaran K
+
+**No:** 1000411
+
+**School Name:** Jain Vidyalaya IB World School
+
+**Mentor's Name:** Syed Ali Beema
